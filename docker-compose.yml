@@ -1,0 +1,33 @@
+services:
+  backend:
+    build:
+      context: ./01-backend
+      dockerfile: Dockerfile
+    container_name: aegistrace-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=development
+      - DEMO_MODE=true
+      - DATABASE_URL=sqlite:///./database/aegistrace.db
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    volumes:
+      - ./database:/app/database
+    restart: unless-stopped
+
+  # Optional Postgres service for production parity testing
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: aegistrace-postgres
+  #   environment:
+  #     POSTGRES_USER: aegis
+  #     POSTGRES_PASSWORD: aegissecret
+  #     POSTGRES_DB: aegistrace
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+
+# volumes:
+#   pgdata:
