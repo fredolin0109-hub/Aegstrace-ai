@@ -119,3 +119,51 @@ def test_threat_intel_sources_cached_field(client):
     assert "sources_cached" in data
     assert isinstance(data["sources_cached"], list)
 
+
+def test_evaluate_heuristics_preserves_prior_score_with_ti_indicators():
+    from app.services.scan_service import evaluate_heuristics
+
+    # Baseline features
+    features = {
+        "is_ip_address": False,
+        "has_at_symbol": False,
+        "is_suspicious_tld": False,
+        "subdomain_count": 0,
+        "detected_keywords": [],
+        "is_https": True,
+        "url_length": 25,
+        "tld": "com",
+    }
+    # Simulate ML result predicting high risk 0.85
+    ml_result = {
+        "risk_score": 0.85,
+        "classification": "HIGH_RISK",
+        "confidence": 0.90,
+    }
+    # Simulate Threat Intel report with a provider detection that has a lower score 0.40
+    threat_intel_report = {
+        "composite_score": 0.40,
+        "verdict": "SUSPICIOUS",
+        "confidence": 0.70,
+        "indicators": [
+            {
+                "type": "PROVIDER_THREAT_DETECTION",
+                "source": "virustotal",
+                "severity": "MEDIUM",
+                "details": {"threat_score": 0.40, "categories": ["phish"]},
+            }
+        ],
+    }
+
+    score, classification, confidence, recommendation, indicators = evaluate_heuristics(
+        features=features,
+        domain="suspicious-ml.com",
+        ml_result=ml_result,
+        threat_intel_report=threat_intel_report,
+    )
+
+    # Score must NOT have been overwritten by 0.40; it must remain >= 0.85 from ML
+    assert score >= 0.85
+    assert classification == "HIGH_RISK"
+
+

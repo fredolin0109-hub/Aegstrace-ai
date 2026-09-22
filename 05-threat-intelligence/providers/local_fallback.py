@@ -136,10 +136,16 @@ class LocalFallbackProvider(BaseThreatProvider):
             db_session = None
             try:
                 db_session = SessionLocal()
-                # Query indicators matching target domain/IP/URL
-                records = db_session.query(ThreatIndicator).filter(
-                    ThreatIndicator.value.ilike(f"%{norm_target}%")
-                ).limit(5).all()
+                if len(norm_target) >= 4:
+                    records = db_session.query(ThreatIndicator).filter(
+                        (ThreatIndicator.value == norm_target)
+                        | ThreatIndicator.value.ilike(f"{norm_target}/%")
+                        | ThreatIndicator.value.ilike(f"%.{norm_target}")
+                    ).limit(5).all()
+                else:
+                    records = db_session.query(ThreatIndicator).filter(
+                        ThreatIndicator.value == norm_target
+                    ).limit(5).all()
                 for rec in records:
                     db_indicators.append({
                         "indicator_type": rec.indicator_type,

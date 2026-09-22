@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse
 from typing import Optional, Dict, Any, List
 import requests
 
@@ -54,7 +55,13 @@ class URLScanProvider(BaseThreatProvider):
                 error_message="Invalid target provided",
             )
 
-        query = f"domain:{norm}" if target_type in ("domain", "url") else f"ip:{norm}"
+        if target_type == "url":
+            parsed_host = urlparse(norm if "://" in norm else f"http://{norm}").hostname or norm
+            query = f"domain:{parsed_host}"
+        elif target_type == "ip":
+            query = f"ip:{norm}"
+        else:
+            query = f"domain:{norm}"
         params = {"q": query, "size": 5}
         headers = {"Accept": "application/json"}
         if self.api_key:

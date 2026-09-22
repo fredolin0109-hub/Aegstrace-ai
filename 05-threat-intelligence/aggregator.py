@@ -156,7 +156,7 @@ class ThreatIntelligenceAggregator:
                     confidence=cached_data["confidence"],
                     sources_consulted=cached_data["sources_consulted"],
                     sources_available=cached_data["sources_available"],
-                    sources_cached=cached_data.get("sources_available", []),
+                    sources_cached=cached_data.get("sources_cached", cached_data.get("sources_available", [])),
                     cached=True,
                     indicators=cached_data["indicators"],
                     provider_details=cached_data["provider_details"],

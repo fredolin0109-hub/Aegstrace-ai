@@ -1,6 +1,7 @@
 import os
 import socket
 import ipaddress
+from urllib.parse import urlparse
 from typing import Optional, Dict, Any, List
 import requests
 
@@ -45,11 +46,25 @@ class AbuseIPDBProvider(BaseThreatProvider):
         except ValueError:
             pass
 
+        # If it's a URL or contains path/scheme, extract hostname
+        host = norm
+        if "://" in host or "/" in host:
+            if not (host.startswith("http://") or host.startswith("https://")):
+                host = f"http://{host}"
+            parsed = urlparse(host)
+            host = parsed.hostname or host
+
+        # Check if extracted host is already an IP
+        try:
+            return str(ipaddress.ip_address(host))
+        except ValueError:
+            pass
+
         # Try to resolve hostname to IP
         orig_timeout = socket.getdefaulttimeout()
         try:
             socket.setdefaulttimeout(self.timeout)
-            addr_info = socket.getaddrinfo(norm, None)
+            addr_info = socket.getaddrinfo(host, None)
             if addr_info:
                 return addr_info[0][4][0]
         except Exception:

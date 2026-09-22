@@ -171,7 +171,7 @@ class DomainInfoResolver:
             "digit_count": sum(c.isdigit() for c in domain),
             "hyphen_count": domain.count("-"),
             "domain_length": len(domain),
-            "has_hex_sequence": bool(len(domain) > 16 and any(c in "0123456789abcdef" for c in domain)),
+            "has_hex_sequence": bool(re.search(r"[0-9a-fA-F]{8,}", domain)),
             "nameservers_count": len(nameservers),
             "suspicious_nameservers": suspicious_ns,
         }

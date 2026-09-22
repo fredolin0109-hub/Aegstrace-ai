@@ -114,3 +114,15 @@ def test_socket_timeout_preservation():
     _ = resolver.resolve("127.0.0.1")
     assert socket.getdefaulttimeout() == orig_timeout
 
+
+def test_hex_sequence_heuristic():
+    resolver = DomainInfoResolver()
+    # Normal domain > 16 chars with English letters (containing 'a', 'e', 'c') should NOT trigger hex sequence
+    meta_normal = resolver.resolve("paypal-security-update.com", resolve_dns=False)
+    assert meta_normal.heuristics["has_hex_sequence"] is False
+
+    # Domain with an 8+ hex character streak (DGA/hash style) should trigger hex sequence
+    meta_hex = resolver.resolve("a1b2c3d4e5f67890.xyz", resolve_dns=False)
+    assert meta_hex.heuristics["has_hex_sequence"] is True
+
+

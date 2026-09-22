@@ -49,6 +49,7 @@ def test_aggregator_caching_behavior():
     assert second_report.cached is True
     assert second_report.target == first_report.target
     assert second_report.composite_score == first_report.composite_score
+    assert isinstance(second_report.sources_cached, list)
 
     # Force refresh bypasses cache
     refreshed_report = agg.lookup("example-cached.com", force_refresh=True)

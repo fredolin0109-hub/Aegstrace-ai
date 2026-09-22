@@ -101,10 +101,16 @@ def threat_lookup(
     db_indicators = []
     if db is not None and domain_clean:
         try:
-            from app.models.threat_indicator import ThreatIndicator
-            records = db.query(ThreatIndicator).filter(
-                ThreatIndicator.value.ilike(f"%{domain_clean}%")
-            ).limit(5).all()
+            if len(domain_clean) >= 4:
+                records = db.query(ThreatIndicator).filter(
+                    (ThreatIndicator.value == domain_clean)
+                    | ThreatIndicator.value.ilike(f"{domain_clean}/%")
+                    | ThreatIndicator.value.ilike(f"%.{domain_clean}")
+                ).limit(5).all()
+            else:
+                records = db.query(ThreatIndicator).filter(
+                    ThreatIndicator.value == domain_clean
+                ).limit(5).all()
 
             for rec in records:
                 db_indicators.append({

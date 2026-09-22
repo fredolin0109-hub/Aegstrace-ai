@@ -273,9 +273,9 @@ def evaluate_heuristics(
             source = ti_ind.get("source", "feed")
             details = ti_ind.get("details", {})
             if ti_type == "PROVIDER_THREAT_DETECTION":
-                score = details.get("threat_score", 0.0)
+                det_score = details.get("threat_score", 0.0)
                 cats = ", ".join(details.get("categories", [])) or "unspecified"
-                val = f"{source.upper()} detection: threat score {score:.2f} ({cats})"
+                val = f"{source.upper()} detection: threat score {det_score:.2f} ({cats})"
             elif ti_type == "ALLOWLIST_DOMAIN":
                 val = f"{source.upper()} allowlist: {details.get('description', 'Verified safe')}"
             elif ti_type == "SUSPICIOUS_TLD":

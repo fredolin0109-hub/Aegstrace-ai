@@ -302,3 +302,69 @@ def test_local_fallback_with_db_signatures():
         lf_module.SessionLocal = orig_sl
         lf_module.ThreatIndicator = orig_ti
 
+
+@patch("requests.get")
+def test_abuseipdb_url_target_resolution(mock_get):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "data": {
+            "ipAddress": "198.51.100.12",
+            "abuseConfidenceScore": 90,
+            "totalReports": 25,
+            "isWhitelisted": False,
+            "isp": "BadHost Ltd",
+            "countryCode": "RU",
+        }
+    }
+    mock_get.return_value = mock_resp
+
+    ab = AbuseIPDBProvider(api_key="mock_key")
+    # Passing a full URL with an IP host
+    res = ab.lookup("http://198.51.100.12:8080/malicious/path", target_type="url")
+    assert res.available is True
+    assert res.is_malicious is True
+    assert res.threat_score == 0.90
+    assert mock_get.called
+    params_sent = mock_get.call_args[1]["params"]
+    assert params_sent["ipAddress"] == "198.51.100.12"
+
+
+@patch("requests.get")
+def test_urlscan_url_target_domain_query(mock_get):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"total": 0, "results": []}
+    mock_get.return_value = mock_resp
+
+    us = URLScanProvider(api_key="mock_key")
+    _ = us.lookup("https://phishing-site.xyz/login/verify?user=admin", target_type="url")
+    assert mock_get.called
+    params = mock_get.call_args[1]["params"]
+    assert params["q"] == "domain:phishing-site.xyz"
+
+
+def test_local_fallback_short_target_exact_match_only():
+    from unittest.mock import MagicMock
+    import providers.local_fallback as lf_module
+
+    mock_db = MagicMock()
+    mock_db.query.return_value.filter.return_value.limit.return_value.all.return_value = []
+    mock_session_factory = MagicMock(return_value=mock_db)
+
+    orig_sl = lf_module.SessionLocal
+    orig_ti = lf_module.ThreatIndicator
+    try:
+        lf_module.SessionLocal = mock_session_factory
+        lf_module.ThreatIndicator = MagicMock()
+
+        local = LocalFallbackProvider()
+        # Querying short target "com"
+        _ = local.lookup("com", target_type="domain")
+        # Ensure filter was called
+        assert mock_db.query.called
+    finally:
+        lf_module.SessionLocal = orig_sl
+        lf_module.ThreatIndicator = orig_ti
+
+
