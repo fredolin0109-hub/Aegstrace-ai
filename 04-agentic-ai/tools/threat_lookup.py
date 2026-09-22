@@ -19,13 +19,25 @@ from hashmap import DomainEntry
 
 
 def threat_lookup(
-    domain_or_url: str,
+    domain_or_url: Optional[str] = None,
     db: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
     Checks the local high-performance DSA threat database and hashmap for known domain reputation.
     Supports parent domain decomposition and optional backend threat indicator correlation.
     """
+    if not domain_or_url or not isinstance(domain_or_url, str) or not domain_or_url.strip():
+        return {
+            "domain": "",
+            "is_known_threat": False,
+            "category": "UNKNOWN",
+            "threat_type": None,
+            "reputation_score": 0.50,
+            "metadata": {},
+            "evidence": [],
+            "db_indicators": [],
+        }
+
     # Clean domain
     raw = domain_or_url.strip().lower()
     if "://" in raw:
@@ -82,7 +94,7 @@ def threat_lookup(
 
     # 2. Check DB Threat Indicators if active DB session is supplied
     db_indicators = []
-    if db is not None:
+    if db is not None and domain_clean:
         try:
             from app.models.threat_indicator import ThreatIndicator
             records = db.query(ThreatIndicator).filter(

@@ -32,6 +32,11 @@ def analyze_url(
     Can run with or without a database session.
     Reuses existing URLScan record if url_scan_id is provided.
     """
+    if not url or not isinstance(url, str) or not url.strip():
+        raise ValueError("URL to analyze must be a non-empty string.")
+
+    target_url = url.strip()
+
     if db is not None:
         try:
             from app.models.url_scan import URLScan
@@ -44,11 +49,14 @@ def analyze_url(
             if not scan:
                 scan = perform_scan(
                     db=db,
-                    raw_url=url,
+                    raw_url=target_url,
                     client_ip=client_ip,
                     user_agent=user_agent,
                     redirect_chain=redirect_chain,
                 )
+
+            features = scan.features_json if isinstance(scan.features_json, dict) else {}
+            indicators = getattr(scan, "threat_indicators", None) or getattr(scan, "indicators", []) or []
 
             return {
                 "url": scan.url,
@@ -59,11 +67,11 @@ def analyze_url(
                 "classification": scan.classification,
                 "confidence": scan.confidence,
                 "recommendation": scan.recommendation,
-                "features": scan.features_json or {},
-                "dsa_verdict": scan.features_json.get("dsa_verdict", "UNKNOWN"),
-                "dsa_risk_score": scan.features_json.get("dsa_risk_score", 0.0),
-                "aiml_classification": scan.features_json.get("ml_classification", "UNKNOWN"),
-                "aiml_risk_score": scan.features_json.get("ml_risk_score", 0.0),
+                "features": features,
+                "dsa_verdict": features.get("dsa_verdict", "UNKNOWN"),
+                "dsa_risk_score": features.get("dsa_risk_score", 0.0),
+                "aiml_classification": features.get("ml_classification", "UNKNOWN"),
+                "aiml_risk_score": features.get("ml_risk_score", 0.0),
                 "detected_indicators": [
                     {
                         "type": ind.indicator_type,
@@ -71,7 +79,7 @@ def analyze_url(
                         "severity": ind.severity,
                         "details": ind.details_json,
                     }
-                    for ind in getattr(scan, "indicators", [])
+                    for ind in indicators
                 ],
                 "url_scan_id": scan.id,
             }
@@ -80,7 +88,7 @@ def analyze_url(
             pass
 
     # Standalone execution (without active DB session)
-    normalized_url, domain, ip_addr = normalize_url(url)
+    normalized_url, domain, ip_addr = normalize_url(target_url)
     features = extract_url_features(normalized_url, domain, is_ip=bool(ip_addr))
 
     # DSA Engine analysis
@@ -115,7 +123,7 @@ def analyze_url(
     )
 
     return {
-        "url": url,
+        "url": target_url,
         "normalized_url": normalized_url,
         "domain": domain,
         "ip_address": ip_addr or client_ip,

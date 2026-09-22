@@ -1,7 +1,7 @@
 import re
 import sys
 from pathlib import Path
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 from typing import Dict, Any, List, Optional
 
 # Ensure repo root and submodules are in sys.path
@@ -19,18 +19,32 @@ from graph import ThreatGraph
 
 OPEN_REDIRECT_PARAM_NAMES = {
     "url", "dest", "destination", "redirect", "redirect_to", "redirect_url",
-    "target", "next", "return", "return_to", "goto", "link", "r", "u"
+    "target", "next", "return", "return_to", "goto", "link", "r", "u", "uri", "path"
 }
 
 
 def redirect_check(
-    url: str,
+    url: Optional[str] = None,
     redirect_chain: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Inspects HTTP redirect sequences, models the hop topology in ThreatGraph,
     detects evasive redirect cycles/loops, and flags open redirect vulnerabilities.
     """
+    if not url or not isinstance(url, str) or not url.strip():
+        return {
+            "url": "",
+            "has_redirect_loop": False,
+            "cycle_nodes": [],
+            "hop_count": 0,
+            "chain": [],
+            "open_redirect_params": [],
+            "cross_domain_hops": [],
+            "is_evasive": False,
+            "risk_delta": 0.0,
+            "evidence": [],
+        }
+
     clean_url = url.strip()
     parsed = urlparse(clean_url)
     origin_domain = (parsed.hostname or "").lower()
@@ -41,7 +55,9 @@ def redirect_check(
     for param_name, values in qs.items():
         if param_name.lower() in OPEN_REDIRECT_PARAM_NAMES:
             for val in values:
-                if re.search(r"^(https?://|//|https?%3A%2F%2F)", val, re.IGNORECASE):
+                decoded_val = unquote(unquote(val))
+                if re.search(r"^(https?://|//|https?%3A%2F%2F|%2F%2F|ftp://)", val, re.IGNORECASE) or \
+                   re.search(r"^(https?://|//|ftp://)", decoded_val, re.IGNORECASE):
                     open_redirect_params.append(f"{param_name}={val}")
 
     # 2. Build ThreatGraph and check for cycles
@@ -56,6 +72,8 @@ def redirect_check(
         prev_domain = origin_domain
 
         for hop in redirect_chain:
+            if not hop or not isinstance(hop, str):
+                continue
             hop_clean = hop.strip()
             if not hop_clean:
                 continue

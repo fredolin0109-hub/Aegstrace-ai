@@ -30,7 +30,13 @@ def create_incident(
     Creates an official SOC incident record in the database for escalated threats.
     Falls back gracefully to simulated incident metadata when running without database access.
     """
-    clamped_score = round(max(0.0, min(1.0, risk_score)), 2)
+    clean_url = (url or "").strip()
+    clean_domain = (domain or "unknown-host").strip()
+
+    try:
+        clamped_score = round(max(0.0, min(1.0, float(risk_score))), 2)
+    except (ValueError, TypeError):
+        clamped_score = 0.50
 
     # Calculate severity tier
     if not severity:
@@ -46,9 +52,9 @@ def create_incident(
         eff_severity = severity.upper()
 
     evidence_text = "; ".join(evidence) if evidence else "Elevated risk characteristics detected by AegisAgent."
-    title = f"Phishing Threat Detected: {domain}"
+    title = f"Phishing Threat Detected: {clean_domain}"
     description = (
-        f"Autonomous investigation escalated URL {url} with risk score {clamped_score:.2f} ({eff_severity}). "
+        f"Autonomous investigation escalated URL {clean_url} with risk score {clamped_score:.2f} ({eff_severity}). "
         f"Evidence: {evidence_text}"
     )
 
@@ -58,7 +64,7 @@ def create_incident(
             from app.services.incident_service import create_incident as service_create_incident
 
             incident_data = IncidentCreate(
-                url=url,
+                url=clean_url,
                 title=title,
                 description=description,
                 severity=eff_severity,
@@ -87,6 +93,6 @@ def create_incident(
         "title": title,
         "severity": eff_severity,
         "status": "OPEN",
-        "url": url,
+        "url": clean_url,
         "created": True,
     }

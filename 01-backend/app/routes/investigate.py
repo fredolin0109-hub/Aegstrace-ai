@@ -32,6 +32,10 @@ def investigate_url(
         url_scan_id=payload.url_scan_id,
         depth=payload.depth,
         force_escalate=payload.force_escalate,
+        client_ip=payload.client_ip,
+        user_agent=payload.user_agent,
+        redirect_chain=payload.redirect_chain,
+        domain_age_days=payload.domain_age_days,
     )
 
     action_trace = [
@@ -60,4 +64,5 @@ def investigate_url(
         evidence_collected=trace.evidence_collected,
         action_trace=action_trace,
         recommended_action=trace.recommended_action,
+        verification_results=trace.verification_results,
     )

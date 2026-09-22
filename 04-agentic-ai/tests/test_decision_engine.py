@@ -1,3 +1,4 @@
+import math
 import pytest
 from decision_engine import DecisionEngine, DecisionResult
 
@@ -143,3 +144,23 @@ def test_decision_force_escalate_high_risk(engine):
     assert res.should_create_incident is True
     assert res.incident_severity == "HIGH"
     assert res.should_trigger_uipath is True
+
+
+def test_decision_nan_risk_score(engine):
+    res = engine.evaluate(
+        risk_score=float("nan"),
+        classification="UNKNOWN",
+    )
+    assert res.decision == "TRIGGER_AUTOMATED_RESPONSE"
+    assert res.should_create_incident is True
+    assert res.risk_tier == "CRITICAL"
+
+
+def test_decision_clamped_boundary_scores(engine):
+    res_neg = engine.evaluate(risk_score=-0.5, classification="SAFE")
+    assert res_neg.decision == "SAFE_PASS"
+    assert res_neg.risk_tier == "LOW"
+
+    res_huge = engine.evaluate(risk_score=999.0, classification="HIGH_RISK")
+    assert res_huge.decision == "TRIGGER_AUTOMATED_RESPONSE"
+    assert res_huge.risk_tier == "CRITICAL"

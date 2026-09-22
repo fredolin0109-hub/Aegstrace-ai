@@ -21,7 +21,7 @@ The **AEGISTRACE Agentic AI Engine** is an autonomous cybersecurity investigatio
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 2. INVESTIGATE (Multi-tool Evidence Gathering)                              │
 │    ├─ tools/threat_lookup.py  -> Local Threat HashMap & Parent Domain Tree  │
-│    ├─ tools/domain_check.py   -> Shannon Entropy, TLD Abuse & Brand Spoofs  │
+│    ├─ tools/domain_check.py   -> Shannon Entropy, Age/NRD, TLDs & Homographs│
 │    └─ tools/redirect_check.py -> ThreatGraph Topology & Cycle Detection     │
 └──────────────────────────────────┬──────────────────────────────────────────┘
                                    │
@@ -59,13 +59,13 @@ The **AEGISTRACE Agentic AI Engine** is an autonomous cybersecurity investigatio
 
 | Tool | File | Purpose |
 |---|---|---|
-| `analyze_url` | `tools/analyze_url.py` | Runs algorithmic (DSA) pattern matching and machine learning (AIML) baseline risk scoring. Supports existing `url_scan_id` linkage. |
+| `analyze_url` | `tools/analyze_url.py` | Runs algorithmic (DSA) pattern matching and machine learning (AIML) baseline risk scoring. Supports existing `url_scan_id` linkage, safely handles null features, and recovers threat indicators. |
 | `threat_lookup` | `tools/threat_lookup.py` | Queries local $O(1)$ DSA hashmap with hierarchical parent domain fallback and database threat indicator cross-referencing. |
-| `domain_check` | `tools/domain_check.py` | Measures Shannon information entropy, detects high-abuse TLDs, calculates nested subdomain depth, raw IP hosts, and brand impersonation. |
-| `redirect_check` | `tools/redirect_check.py` | Analyzes HTTP redirect sequences using directed `ThreatGraph`, detects cycles/loops via DFS coloring, and identifies open redirect parameters. |
+| `domain_check` | `tools/domain_check.py` | Measures Shannon entropy, evaluates domain registration age (Newly Registered Domain <30 days detection), flags high-abuse TLDs, calculates nested subdomain depth, identifies raw IP hosts, and intercepts IDN/punycode homograph attacks. |
+| `redirect_check` | `tools/redirect_check.py` | Analyzes HTTP redirect sequences using directed `ThreatGraph`, detects cycles/loops via DFS coloring, and identifies open redirect parameters (including multi-encoded payloads). |
 | `create_incident` | `tools/create_incident.py` | Creates official SOC incident records (`INC-YYYYMMDD-XXXX`) in the database with severity classification (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`). |
 | `trigger_uipath` | `tools/trigger_uipath.py` | Dispatches authorized UiPath RPA workflows (`CONTAIN_HOST`, `BLOCK_DOMAIN`, `CREATE_TICKET`, `NOTIFY_SOC`) with execution tracking. |
-| `verify_response` | `tools/verify_response.py` | Verifies execution status, endpoint network isolation, DNS sinkhole activation, and incident ticket issuance. |
+| `verify_response` | `tools/verify_response.py` | Verifies RPA execution status, endpoint network isolation, DNS sinkhole activation, and incident ticket issuance. |
 
 ### 2. Auditable Action Trace Tracker (`action_trace.py`)
 
@@ -78,10 +78,11 @@ The **AEGISTRACE Agentic AI Engine** is an autonomous cybersecurity investigatio
 - **High-Risk & Evasive Loop Auto-Containment**: Triggers automated RPA isolation (`CONTAIN_HOST`) for verified phishing lures, known malicious domains, or redirect loops.
 - **Deep Investigation Escalation**: Upgrades medium-risk threats to formal SOC review when investigated under `depth="deep"`.
 - **Administrative Force Escalation**: Enables immediate SOC escalation on operational demand.
+- **Robustness**: Clamps boundary values, handles NaN/infinite scores safely as high-risk anomalies.
 
 ### 4. Autonomous Agent Orchestrator (`agent.py`)
 
-- **`AegisAgent`**: Unifies all tools, decision matrices, and action trace logging into a cohesive, production-grade interface. Works both integrated within FastAPI routes and standalone in CLI/offline environments.
+- **`AegisAgent`**: Unifies all tools, decision matrices, and action trace logging into a cohesive, production-grade interface. Works both integrated within FastAPI routes and standalone in CLI/offline environments. Validates inputs, synthesizes domain age and homograph evidence, and validates containment verification.
 
 ---
 
@@ -98,6 +99,10 @@ trace = agent.investigate(
     url_scan_id=payload.url_scan_id,
     depth=payload.depth,
     force_escalate=payload.force_escalate,
+    client_ip=payload.client_ip,
+    user_agent=payload.user_agent,
+    redirect_chain=payload.redirect_chain,
+    domain_age_days=payload.domain_age_days,
 )
 ```
 

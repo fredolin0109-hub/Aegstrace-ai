@@ -18,6 +18,7 @@ while _curr.parent != _curr:
 def verify_response(
     execution_id: Optional[str] = None,
     incident_id: Optional[int] = None,
+    incident_number: Optional[str] = None,
     action_type: Optional[str] = None,
     uipath_result: Optional[Dict[str, Any]] = None,
     db: Optional[Any] = None,
@@ -60,13 +61,15 @@ def verify_response(
         "detail": f"UiPath RPA execution status: {exec_status}."
     })
 
-    # Check 2: Incident Status Check
+    # Check 2: Incident Status & Ticket Identification
     if db is not None and incident_id:
         try:
             from app.models.incident import Incident
             inc = db.query(Incident).filter(Incident.id == incident_id).first()
             if inc:
                 incident_status = inc.status
+                if not ticket_id and inc.incident_number:
+                    ticket_id = inc.incident_number
                 if inc.status in ("CONTAINED", "CLOSED"):
                     containment_status = "CONTAINED"
                 else:
@@ -100,27 +103,37 @@ def verify_response(
         containment_status = "NOT_APPLICABLE"
 
     # Check 4: Ticket Issuance Verification
-    # Try to find ticket_id in details
+    # Try to find ticket_id in details or fall back to incident_number
     if isinstance(merged_details, dict):
         if "ticket_id" in merged_details:
             ticket_id = merged_details["ticket_id"]
-        elif "CREATE_TICKET" in merged_details:
+        elif "CREATE_TICKET" in merged_details and isinstance(merged_details["CREATE_TICKET"], dict):
             ticket_id = merged_details["CREATE_TICKET"].get("ticket_id")
+
+    if not ticket_id:
+        ticket_id = incident_number
 
     if ticket_id:
         ticket_created = True
         checks.append({
             "check": "TICKET_GENERATION",
             "passed": True,
-            "detail": f"SOC incident ticket created: {ticket_id}."
+            "detail": f"SOC incident record/ticket verified: {ticket_id}."
         })
-    elif act == "CREATE_TICKET":
+    elif incident_id or incident_number or act == "CREATE_TICKET":
+        ticket_created = False
         checks.append({
             "check": "TICKET_GENERATION",
-            "passed": rpa_passed,
-            "detail": "Ticket generated via automated RPA pipeline."
+            "passed": False,
+            "detail": "SOC incident ticket generation could not be verified."
         })
-        ticket_created = rpa_passed
+    else:
+        checks.append({
+            "check": "TICKET_GENERATION",
+            "passed": True,
+            "detail": "Ticket generation confirmed or not required for benign target."
+        })
+        ticket_created = True
 
     overall_verified = all(c["passed"] for c in checks) if checks else False
 

@@ -58,18 +58,23 @@ class AegisAgent:
         client_ip: Optional[str] = None,
         user_agent: Optional[str] = None,
         redirect_chain: Optional[List[str]] = None,
+        domain_age_days: Optional[int] = None,
     ) -> ActionTrace:
         """
         Executes the autonomous 5-phase investigation lifecycle on the target URL.
         Returns an auditable, fully articulated ActionTrace.
         """
-        trace = ActionTrace(url=url, url_scan_id=url_scan_id, depth=depth)
+        if not url or not isinstance(url, str) or not url.strip():
+            raise ValueError("Target URL must be a non-empty string.")
+
+        target_url = url.strip()
+        trace = ActionTrace(url=target_url, url_scan_id=url_scan_id, depth=depth)
 
         # =========================================================================
         # PHASE 1: DETECT — Fast DSA & AIML Baseline Threat Analysis
         # =========================================================================
         detect_data = analyze_url(
-            url=url,
+            url=target_url,
             db=self.db,
             url_scan_id=url_scan_id,
             client_ip=client_ip,
@@ -105,7 +110,7 @@ class AegisAgent:
         trace.record_step(
             action_type="DETECT",
             tool_name="analyze_url",
-            tool_input={"url": url, "depth": depth},
+            tool_input={"url": target_url, "depth": depth},
             tool_output={
                 "risk_score": baseline_risk,
                 "classification": classification,
@@ -122,7 +127,7 @@ class AegisAgent:
         # PHASE 2: INVESTIGATE — Multi-source Intelligence & Deep Heuristics
         # =========================================================================
         # Tool 2.1: Threat Database / HashMap Lookup
-        threat_data = threat_lookup(domain_or_url=domain or url, db=self.db)
+        threat_data = threat_lookup(domain_or_url=domain or target_url, db=self.db)
         if threat_data.get("evidence"):
             trace.add_evidence(threat_data["evidence"])
 
@@ -144,7 +149,11 @@ class AegisAgent:
         )
 
         # Tool 2.2: Domain Signals, Shannon Entropy & Brand Spoofing Check
-        domain_data = domain_check(domain_or_url=domain or url, url=url)
+        domain_data = domain_check(
+            domain_or_url=domain or target_url,
+            url=target_url,
+            domain_age_days=domain_age_days,
+        )
         if domain_data.get("evidence"):
             trace.add_evidence(domain_data["evidence"])
 
@@ -155,14 +164,18 @@ class AegisAgent:
             tool_output={
                 "entropy": domain_data.get("entropy"),
                 "is_high_entropy": domain_data.get("is_high_entropy"),
+                "domain_age_days": domain_data.get("domain_age_days"),
+                "is_newly_registered": domain_data.get("is_newly_registered"),
                 "subdomain_count": domain_data.get("subdomain_count"),
                 "is_suspicious_tld": domain_data.get("is_suspicious_tld"),
                 "brand_spoof_detected": domain_data.get("brand_spoof_detected"),
+                "is_homograph_spoof": domain_data.get("is_homograph_spoof"),
                 "risk_delta": domain_data.get("risk_delta"),
             },
             decision_rationale=(
                 f"Domain structural inspection measured entropy {domain_data.get('entropy')} bits, "
-                f"{domain_data.get('subdomain_count')} subdomains, brand_spoof={domain_data.get('brand_spoof_detected')}."
+                f"{domain_data.get('subdomain_count')} subdomains, NRD={domain_data.get('is_newly_registered')}, "
+                f"brand_spoof={domain_data.get('brand_spoof_detected')}."
             ),
             status="SUCCESS",
         )
@@ -170,14 +183,14 @@ class AegisAgent:
         # Tool 2.3: Redirect Chain Topology & Evasive Loop Detection
         redirect_data = None
         if redirect_chain or features.get("has_redirect_token") or depth == "deep":
-            redirect_data = redirect_check(url=url, redirect_chain=redirect_chain)
+            redirect_data = redirect_check(url=target_url, redirect_chain=redirect_chain)
             if redirect_data.get("evidence"):
                 trace.add_evidence(redirect_data["evidence"])
 
             trace.record_step(
                 action_type="INVESTIGATE",
                 tool_name="redirect_check",
-                tool_input={"url": url, "redirect_chain_length": len(redirect_chain) if redirect_chain else 0},
+                tool_input={"url": target_url, "redirect_chain_length": len(redirect_chain) if redirect_chain else 0},
                 tool_output={
                     "has_loop": redirect_data.get("has_redirect_loop"),
                     "hop_count": redirect_data.get("hop_count"),
@@ -205,6 +218,10 @@ class AegisAgent:
                 accumulated_score += 0.35
             if domain_data.get("brand_spoof_detected"):
                 accumulated_score += 0.30
+            if domain_data.get("is_homograph_spoof"):
+                accumulated_score += 0.35
+            if domain_data.get("is_newly_registered"):
+                accumulated_score += 0.25
             if domain_data.get("is_high_entropy"):
                 accumulated_score += 0.15
             if redirect_data and redirect_data.get("open_redirect_params"):
@@ -264,7 +281,7 @@ class AegisAgent:
         incident_data = None
         if decision_result.should_create_incident:
             incident_data = create_incident(
-                url=url,
+                url=target_url,
                 domain=domain,
                 risk_score=final_risk,
                 severity=decision_result.incident_severity,
@@ -282,7 +299,7 @@ class AegisAgent:
                 action_type="ACT",
                 tool_name="create_incident",
                 tool_input={
-                    "url": url,
+                    "url": target_url,
                     "domain": domain,
                     "severity": decision_result.incident_severity,
                     "evidence_count": len(trace.evidence_collected),
@@ -302,7 +319,7 @@ class AegisAgent:
         uipath_data = None
         if decision_result.should_trigger_uipath:
             uipath_data = trigger_uipath(
-                target_url=url,
+                target_url=target_url,
                 incident_id=trace.incident_id,
                 incident_number=trace.incident_number,
                 action_type=decision_result.uipath_action_type or "CONTAIN_HOST",
@@ -315,7 +332,7 @@ class AegisAgent:
                 action_type="ACT",
                 tool_name="trigger_uipath",
                 tool_input={
-                    "target_url": url,
+                    "target_url": target_url,
                     "incident_id": trace.incident_id,
                     "action_type": decision_result.uipath_action_type or "CONTAIN_HOST",
                 },
@@ -338,7 +355,7 @@ class AegisAgent:
                 trace.record_step(
                     action_type="ACT",
                     tool_name="soc_monitor_logger",
-                    tool_input={"url": url, "action": "LOG_AND_WATCH"},
+                    tool_input={"url": target_url, "action": "LOG_AND_WATCH"},
                     tool_output={"status": "LOGGED_TO_AUDIT"},
                     decision_rationale="Logged suspicious URL to SOC monitoring stream for ongoing traffic observation.",
                     status="SUCCESS",
@@ -347,7 +364,7 @@ class AegisAgent:
                 trace.record_step(
                     action_type="ACT",
                     tool_name="policy_allow_gateway",
-                    tool_input={"url": url, "action": "ALLOW"},
+                    tool_input={"url": target_url, "action": "ALLOW"},
                     tool_output={"status": "AUTHORIZED"},
                     decision_rationale="Authorized safe passage for legitimate target matching allowlist policy.",
                     status="SUCCESS",
@@ -360,6 +377,7 @@ class AegisAgent:
             verify_data = verify_response(
                 execution_id=uipath_data.get("execution_id"),
                 incident_id=trace.incident_id,
+                incident_number=trace.incident_number,
                 action_type=decision_result.uipath_action_type,
                 uipath_result=uipath_data,
                 db=self.db,
@@ -399,7 +417,7 @@ class AegisAgent:
             trace.record_step(
                 action_type="VERIFY",
                 tool_name="policy_compliance_verifier",
-                tool_input={"url": url, "decision": decision_result.decision},
+                tool_input={"url": target_url, "decision": decision_result.decision},
                 tool_output={"policy_compliant": True, "status": "VERIFIED"},
                 decision_rationale=f"Verified compliance against zero-trust policy: decision '{decision_result.decision}' confirmed.",
                 status="SUCCESS",

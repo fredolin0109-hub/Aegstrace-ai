@@ -26,6 +26,11 @@ def test_analyze_url_high_risk():
     assert "paypal" in result["features"]["detected_keywords"]
 
 
+def test_analyze_url_empty_raises_value_error():
+    with pytest.raises(ValueError):
+        analyze_url("")
+
+
 def test_threat_lookup_known_safe():
     res = threat_lookup("google.com")
     assert res["category"] == "SAFE"
@@ -56,6 +61,15 @@ def test_threat_lookup_unknown():
     assert res["is_known_threat"] is False
 
 
+def test_threat_lookup_none_and_empty_safe():
+    res = threat_lookup(None)
+    assert res["category"] == "UNKNOWN"
+    assert res["is_known_threat"] is False
+
+    res_empty = threat_lookup("")
+    assert res_empty["category"] == "UNKNOWN"
+
+
 def test_domain_check_benign():
     res = domain_check("wikipedia.org")
     assert res["is_ip_address"] is False
@@ -63,6 +77,9 @@ def test_domain_check_benign():
     assert res["subdomain_count"] == 0
     assert res["brand_spoof_detected"] is None
     assert res["risk_delta"] == 0.0
+    assert res["domain_age_days"] is not None
+    assert res["domain_age_days"] > 365
+    assert res["is_newly_registered"] is False
 
 
 def test_domain_check_high_entropy_and_tld():
@@ -88,6 +105,34 @@ def test_domain_check_brand_spoof():
     assert any("Brand spoofing detected" in ev for ev in res["evidence"])
 
 
+def test_domain_check_newly_registered_domain():
+    res = domain_check("suspect-security-verify.com", domain_age_days=12)
+    assert res["domain_age_days"] == 12
+    assert res["is_newly_registered"] is True
+    assert res["risk_delta"] >= 0.30
+    assert any("Newly registered domain" in ev for ev in res["evidence"])
+
+
+def test_domain_check_homograph_spoof():
+    # 'о' is Cyrillic \u043e visually identical to Latin 'o'
+    cyrillic_spoof = "g\u043e\u043egle-login.com"
+    res = domain_check(cyrillic_spoof)
+    assert res["is_homograph_spoof"] is True
+    assert res["brand_spoof_detected"] == "google"
+    assert res["risk_delta"] >= 0.35
+    assert any("Homograph" in ev for ev in res["evidence"])
+
+
+def test_domain_check_none_and_empty_safe():
+    res_none = domain_check(None)
+    assert res_none["domain"] == ""
+    assert res_none["risk_delta"] == 0.0
+
+    res_empty = domain_check("")
+    assert res_empty["domain"] == ""
+    assert res_empty["risk_delta"] == 0.0
+
+
 def test_redirect_check_benign_no_hops():
     res = redirect_check("https://example.com/products/view")
     assert res["has_redirect_loop"] is False
@@ -110,6 +155,13 @@ def test_redirect_check_with_cycle():
     assert res["is_evasive"] is True
     assert len(res["cycle_nodes"]) >= 2
     assert any("redirect cycle/loop" in ev for ev in res["evidence"])
+
+
+def test_redirect_check_none_safe():
+    res = redirect_check(None)
+    assert res["url"] == ""
+    assert res["hop_count"] == 0
+    assert res["has_redirect_loop"] is False
 
 
 def test_create_incident_standalone():
@@ -150,6 +202,7 @@ def test_verify_response_standalone():
     verify_res = verify_response(
         execution_id=uipath_res["execution_id"],
         incident_id=5678,
+        incident_number="INC-20260922-5678",
         action_type="CONTAIN_HOST",
         uipath_result=uipath_res,
     )
@@ -159,3 +212,6 @@ def test_verify_response_standalone():
     assert verify_res["ticket_created"] is True
     assert verify_res["ticket_id"] is not None
     assert len(verify_res["checks"]) >= 2
+    check_names = [c["check"] for c in verify_res["checks"]]
+    assert "HOST_CONTAINMENT" in check_names
+    assert "TICKET_GENERATION" in check_names

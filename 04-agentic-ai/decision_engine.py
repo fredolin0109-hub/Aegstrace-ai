@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass, asdict
 from typing import Optional, List, Dict, Any
 
@@ -53,7 +54,14 @@ class DecisionEngine:
         Returns a structured DecisionResult.
         """
         evidence_list = evidence or []
-        clamped_score = round(max(0.0, min(1.0, risk_score)), 2)
+
+        if risk_score is None or (isinstance(risk_score, float) and math.isnan(risk_score)):
+            clamped_score = 1.0
+        else:
+            try:
+                clamped_score = round(max(0.0, min(1.0, float(risk_score))), 2)
+            except (TypeError, ValueError):
+                clamped_score = 1.0
 
         # 1. Override for verified enterprise allowlisted/legitimate domains
         if domain_category == "SAFE" and not force_escalate:

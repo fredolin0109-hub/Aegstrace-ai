@@ -57,6 +57,8 @@ def test_agent_high_risk_triggers_incident_and_uipath(agent):
 
     # Verification validation
     assert trace.verification_results["containment_status"] == "CONTAINED"
+    assert trace.verification_results["ticket_created"] is True
+    assert trace.verification_results["ticket_id"] is not None
     assert trace.verification_results["verified"] is True
 
 
@@ -88,3 +90,33 @@ def test_agent_force_escalation(agent):
     assert trace.incident_created is True
     assert trace.incident_id is not None
     assert trace.incident_number is not None
+
+
+def test_agent_empty_or_none_url_raises_error(agent):
+    with pytest.raises(ValueError):
+        agent.investigate("")
+
+    with pytest.raises(ValueError):
+        agent.investigate("   ")
+
+    with pytest.raises(ValueError):
+        agent.investigate(None)
+
+
+def test_agent_newly_registered_domain(agent):
+    trace = agent.investigate(
+        url="http://account-verification-portal.xyz/login",
+        domain_age_days=14,
+    )
+    assert trace.classification == "HIGH_RISK"
+    assert trace.decision == "TRIGGER_AUTOMATED_RESPONSE"
+    assert trace.incident_created is True
+    assert any("Newly registered domain" in ev for ev in trace.evidence_collected)
+
+
+def test_agent_homograph_brand_spoof(agent):
+    # 'о' is Cyrillic \u043e visually identical to 'o'
+    trace = agent.investigate("http://g\u043e\u043egle-login.security.com/auth")
+    assert trace.decision == "TRIGGER_AUTOMATED_RESPONSE"
+    assert trace.incident_created is True
+    assert any("Homograph" in ev for ev in trace.evidence_collected)

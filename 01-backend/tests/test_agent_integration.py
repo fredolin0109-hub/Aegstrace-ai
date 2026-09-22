@@ -21,6 +21,8 @@ def test_investigate_e2e_persists_action_trace(client, db_session):
     assert data["decision"] == "SAFE_PASS"
     assert data["incident_created"] is False
     assert data["initial_risk_score"] < 0.35
+    assert "verification_results" in data
+    assert data["verification_results"]["verified"] is True
 
     # Check action trace response items
     trace_items = data["action_trace"]
@@ -60,6 +62,13 @@ def test_investigate_high_risk_triggers_incident_and_uipath(client, db_session):
     assert data["incident_number"].startswith("INC-")
     assert data["recommended_action"] == "BLOCK_AND_CONTAIN"
     assert len(data["evidence_collected"]) > 0
+
+    # Verify verification results in response
+    assert data["verification_results"] is not None
+    assert data["verification_results"]["verified"] is True
+    assert data["verification_results"]["containment_status"] == "CONTAINED"
+    assert data["verification_results"]["ticket_created"] is True
+    assert data["verification_results"]["ticket_id"] == data["incident_number"]
 
     # Verify Incident record in database
     incident = db_session.query(Incident).filter(Incident.id == data["incident_id"]).first()
@@ -105,3 +114,35 @@ def test_investigate_validation_error(client):
     """Verify 422 Unprocessable Entity when URL is invalid or empty."""
     response = client.post("/api/investigate", json={"url": "a"})
     assert response.status_code == 422
+
+    response_ws = client.post("/api/investigate", json={"url": "     "})
+    assert response_ws.status_code == 422
+
+
+def test_investigate_with_redirect_chain_via_api(client):
+    """Verify investigate endpoint processes redirect_chain and detects loops."""
+    payload = {
+        "url": "http://domain-x.com",
+        "redirect_chain": ["http://domain-y.com", "http://domain-z.com", "http://domain-x.com"],
+        "depth": "deep",
+    }
+    response = client.post("/api/investigate", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["decision"] == "TRIGGER_AUTOMATED_RESPONSE"
+    assert any("redirect cycle/loop" in ev for ev in data["evidence_collected"])
+
+
+def test_investigate_newly_registered_domain_via_api(client):
+    """Verify investigate endpoint processes domain_age_days and flags newly registered domain."""
+    payload = {
+        "url": "http://new-security-check.xyz/login",
+        "domain_age_days": 10,
+        "depth": "standard",
+    }
+    response = client.post("/api/investigate", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["classification"] == "HIGH_RISK"
+    assert data["incident_created"] is True
+    assert any("Newly registered domain" in ev for ev in data["evidence_collected"])

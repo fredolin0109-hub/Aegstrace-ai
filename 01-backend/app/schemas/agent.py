@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class AgentActionTraceItem(BaseModel):
@@ -20,6 +20,18 @@ class InvestigateRequest(BaseModel):
     url_scan_id: Optional[int] = None
     depth: str = Field("standard", description="standard or deep")
     force_escalate: bool = False
+    client_ip: Optional[str] = None
+    user_agent: Optional[str] = None
+    redirect_chain: Optional[List[str]] = None
+    domain_age_days: Optional[int] = None
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        cleaned = v.strip()
+        if len(cleaned) < 3:
+            raise ValueError("URL must be at least 3 non-whitespace characters.")
+        return cleaned
 
 
 class InvestigateResponse(BaseModel):
@@ -35,3 +47,4 @@ class InvestigateResponse(BaseModel):
     evidence_collected: List[str] = Field(default_factory=list)
     action_trace: List[AgentActionTraceItem] = Field(default_factory=list)
     recommended_action: str
+    verification_results: Optional[Dict[str, Any]] = None
