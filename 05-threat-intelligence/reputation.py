@@ -124,7 +124,7 @@ class ReputationEngine:
         # 1. Authoritative Malicious Override & Consensus Protection: Prevent dilution of verified threats
         if has_authoritative_malicious:
             composite_score = max(composite_score, 0.75, max_malicious_score * 0.90)
-        elif malicious_count >= 2:
+        elif malicious_count >= 2 and max_malicious_score >= 0.70:
             composite_score = max(composite_score, 0.70, max_malicious_score * 0.85)
 
         # 2. Domain Heuristics Fusion

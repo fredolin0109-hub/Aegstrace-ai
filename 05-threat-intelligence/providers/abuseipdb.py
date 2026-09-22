@@ -85,10 +85,22 @@ class AbuseIPDBProvider(BaseThreatProvider):
                 error_message=f"Could not resolve {target_type} '{target}' to a valid IP address",
             )
 
-        # Handle private / loopback / reserved IPs without wasting upstream quota
+        # Handle RFC 1918 private / loopback IPs without wasting upstream quota
         try:
             ip_obj = ipaddress.ip_address(ip_addr)
-            if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_reserved:
+            is_rfc1918_or_loopback = (
+                ip_obj.is_loopback
+                or (ip_obj.version == 4 and (
+                    ip_obj in ipaddress.ip_network("10.0.0.0/8")
+                    or ip_obj in ipaddress.ip_network("172.16.0.0/12")
+                    or ip_obj in ipaddress.ip_network("192.168.0.0/16")
+                ))
+                or (ip_obj.version == 6 and (
+                    ip_obj in ipaddress.ip_network("fc00::/7")
+                    or ip_obj in ipaddress.ip_network("fe80::/10")
+                ))
+            )
+            if is_rfc1918_or_loopback:
                 return ProviderResult(
                     source_name=self.source_name,
                     is_malicious=False,
