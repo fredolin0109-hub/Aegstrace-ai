@@ -6,12 +6,33 @@ from urllib.parse import urlparse
 from typing import Dict, Any, List, Tuple, Optional
 from sqlalchemy.orm import Session
 
-# Ensure 02-dsa-engine is importable
-dsa_dir = Path(__file__).resolve().parents[3] / "02-dsa-engine"
-if str(dsa_dir) not in sys.path and dsa_dir.exists():
-    sys.path.insert(0, str(dsa_dir))
+# Ensure 02-dsa-engine and 03-aiml-engine are importable
+root_dir = Path(__file__).resolve().parents[3]
+dsa_dir = root_dir / "02-dsa-engine"
+aiml_dir = root_dir / "03-aiml-engine"
+aiml_src = aiml_dir / "src"
+
+for p in [dsa_dir, aiml_dir, aiml_src]:
+    if str(p) not in sys.path and p.exists():
+        sys.path.insert(0, str(p))
 
 from engine import global_dsa_engine, DSAScanResult
+
+try:
+    from predict import predict_url
+except ImportError:
+    def predict_url(url: str):
+        return {
+            "url": url,
+            "risk_score": 0.05,
+            "classification": "SAFE",
+            "confidence": 0.50,
+            "detected_features": {},
+            "explanation": ["ML engine unavailable; using heuristic fallback"],
+            "recommended_action": "ALLOW",
+            "model_version": "fallback_unavailable",
+        }
+
 from app.models.url_scan import URLScan
 from app.models.threat_indicator import ThreatIndicator
 from app.services.audit_service import record_audit
@@ -100,10 +121,12 @@ def extract_url_features(url: str, domain: str, is_ip: bool) -> Dict[str, Any]:
 def evaluate_heuristics(
     features: Dict[str, Any],
     domain: str,
-    dsa_result: Optional[DSAScanResult] = None
+    dsa_result: Optional[DSAScanResult] = None,
+    ml_result: Optional[Dict[str, Any]] = None,
 ) -> Tuple[float, str, float, str, List[Dict[str, Any]]]:
     """
-    Evaluates extracted features and fuses them with 02-dsa-engine algorithmic results.
+    Evaluates extracted features and fuses them with 02-dsa-engine algorithmic results
+    and 03-aiml-engine supervised machine learning predictions.
     Returns: (risk_score, classification, confidence, recommendation, indicators)
     """
     score = 0.05
@@ -175,6 +198,7 @@ def evaluate_heuristics(
 
     # Integrate DSA Engine results (HashMap reputation, Trie matches, ThreatGraph loop)
     confidence = 0.90
+    is_known_safe = False
     if dsa_result:
         # Incorporate DSA detected indicators deduplicating by (type, value)
         existing_keys = {(ind["indicator_type"], ind.get("value", "")) for ind in indicators}
@@ -190,13 +214,42 @@ def evaluate_heuristics(
             if dom_category == "SAFE":
                 score = 0.0
                 confidence = 0.99
+                is_known_safe = True
             elif dom_category in ("MALICIOUS", "SUSPICIOUS"):
-                score = max(score, dsa_result.dsa_risk_score)
+                score = max(score, dsa_result.dsa_risk_score, 0.90 if dom_category == "MALICIOUS" else 0.50)
                 confidence = 0.98 if dom_category == "MALICIOUS" else 0.90
         else:
             # Algorithmic score fusion
             score = max(score, dsa_result.dsa_risk_score)
             confidence = 0.92 if score >= 0.70 else (0.85 if score >= 0.35 else 0.95)
+
+    # Integrate AIML Engine results (Random Forest Probability and Explanations)
+    if ml_result:
+        ml_score = ml_result.get("risk_score", 0.0)
+        ml_cls = ml_result.get("classification", "SAFE")
+        ml_conf = ml_result.get("confidence", 0.50)
+
+        # Known safe reputation overrides ML false positives
+        if is_known_safe:
+            score = 0.0
+            confidence = 0.99
+        else:
+            # Multi-layer score fusion: incorporate supervised probability
+            score = max(score, ml_score)
+            if ml_cls in ("SUSPICIOUS", "HIGH_RISK"):
+                confidence = max(confidence, ml_conf)
+                indicators.append({
+                    "indicator_type": "AIML_PREDICTION",
+                    "value": f"{ml_cls} (risk={ml_score:.2f})",
+                    "severity": "HIGH" if ml_cls == "HIGH_RISK" else "MEDIUM",
+                    "details": {
+                        "ml_risk_score": ml_score,
+                        "ml_confidence": ml_conf,
+                        "ml_classification": ml_cls,
+                        "explanations": ml_result.get("explanation", []),
+                        "model_version": ml_result.get("model_version", "1.0.0"),
+                    }
+                })
 
     # Clamp score
     final_score = round(min(1.0, max(0.0, score)), 2)
@@ -234,6 +287,21 @@ def perform_scan(
         redirect_chain=redirect_chain,
     )
 
+    # Execute AIML Engine Pipeline (Feature Extraction + Random Forest Classifier)
+    try:
+        ml_result = predict_url(normalized_url)
+    except Exception as exc:
+        ml_result = {
+            "url": normalized_url,
+            "risk_score": 0.05,
+            "classification": "SAFE",
+            "confidence": 0.50,
+            "detected_features": {},
+            "explanation": [f"AIML inference failed: {str(exc)}"],
+            "recommended_action": "ALLOW",
+            "model_version": "fallback_error",
+        }
+
     # Attach DSA telemetry to features
     features["dsa"] = dsa_result.to_dict()
     features["dsa_verdict"] = dsa_result.dsa_verdict
@@ -245,10 +313,19 @@ def perform_scan(
     if dsa_result.trie_matches:
         features["trie_matched_patterns"] = [m["pattern"] for m in dsa_result.trie_matches]
 
+    # Attach AIML telemetry to features
+    features["aiml"] = ml_result
+    features["ml_risk_score"] = ml_result.get("risk_score")
+    features["ml_classification"] = ml_result.get("classification")
+    features["ml_confidence"] = ml_result.get("confidence")
+    features["ml_explanations"] = ml_result.get("explanation", [])
+    features["ml_model_version"] = ml_result.get("model_version")
+
     risk_score, classification, confidence, recommendation, indicators_data = evaluate_heuristics(
         features=features,
         domain=domain,
         dsa_result=dsa_result,
+        ml_result=ml_result,
     )
 
     scan = URLScan(
@@ -266,7 +343,7 @@ def perform_scan(
     db.commit()
     db.refresh(scan)
 
-    # Save associated threat indicators (including DSA indicators)
+    # Save associated threat indicators (including DSA & AIML indicators)
     for ind in indicators_data:
         indicator = ThreatIndicator(
             url_scan_id=scan.id,
@@ -292,6 +369,8 @@ def perform_scan(
             "risk_score": risk_score,
             "classification": classification,
             "dsa_verdict": dsa_result.dsa_verdict,
+            "ml_classification": ml_result.get("classification"),
+            "ml_risk_score": ml_result.get("risk_score"),
         },
         ip_address=client_ip,
     )

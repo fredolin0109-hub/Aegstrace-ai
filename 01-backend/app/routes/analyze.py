@@ -61,6 +61,23 @@ def analyze_url(
 
         graph_summary = scan.features_json.get("graph_summary") or dsa_info.get("graph_summary")
 
+        aiml_info = scan.features_json.get("aiml", {}) if scan.features_json else {}
+        ml_risk_score = scan.features_json.get("ml_risk_score") if scan.features_json else None
+        if ml_risk_score is None and aiml_info:
+            ml_risk_score = aiml_info.get("risk_score")
+
+        ml_classification = scan.features_json.get("ml_classification") if scan.features_json else None
+        if ml_classification is None and aiml_info:
+            ml_classification = aiml_info.get("classification")
+
+        ml_confidence = scan.features_json.get("ml_confidence") if scan.features_json else None
+        if ml_confidence is None and aiml_info:
+            ml_confidence = aiml_info.get("confidence")
+
+        ml_explanations = scan.features_json.get("ml_explanations") if scan.features_json else None
+        if ml_explanations is None and aiml_info:
+            ml_explanations = aiml_info.get("explanation")
+
         return ScanResponse(
             id=scan.id,
             url=scan.url,
@@ -76,6 +93,10 @@ def analyze_url(
             dsa_verdict=dsa_verdict,
             dsa_risk_score=dsa_risk_score,
             graph_summary=graph_summary,
+            ml_risk_score=ml_risk_score,
+            ml_classification=ml_classification,
+            ml_confidence=ml_confidence,
+            ml_explanations=ml_explanations,
             created_at=scan.created_at,
         )
     except Exception as e:

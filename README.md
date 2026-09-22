@@ -29,8 +29,8 @@ User visits Website
 ## 10-Phase Implementation Roadmap
 
 - [x] **PHASE 1**: Backend + Database (FastAPI, SQLAlchemy 2.0, Pydantic v2, SQLite/PostgreSQL, 9 REST APIs, Audit Trail)
-- [ ] **PHASE 2**: DSA Engine (Trie, HashMap, Threat Graph, Priority Queue, Searching & Sorting)
-- [ ] **PHASE 3**: AIML Engine (URL Feature Extraction, ML Model Training, Risk Prediction Pipeline)
+- [x] **PHASE 2**: DSA Engine (Trie, HashMap, Threat Graph, Priority Queue, Searching & Sorting)
+- [x] **PHASE 3**: AIML Engine (URL Feature Extraction, ML Model Training, Risk Prediction Pipeline)
 - [ ] **PHASE 4**: Agentic AI (Tool-based Investigation, Evidence Trace, Automated Escalation)
 - [ ] **PHASE 5**: Threat Intelligence (Multi-provider aggregator, Fallbacks, Caching)
 - [ ] **PHASE 6**: Frontend Dashboard (React + TypeScript + Tailwind CSS SOC Dashboard)

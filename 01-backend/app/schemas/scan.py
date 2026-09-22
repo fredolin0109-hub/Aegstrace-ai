@@ -34,6 +34,10 @@ class ScanResponse(BaseModel):
     dsa_verdict: Optional[str] = Field(None, description="Verdict from 02-dsa-engine pipeline (SAFE, SUSPICIOUS, HIGH_RISK)")
     dsa_risk_score: Optional[float] = Field(None, description="Threat score computed by 02-dsa-engine")
     graph_summary: Optional[Dict[str, Any]] = Field(None, description="ThreatGraph topology summary and cycle detection")
+    ml_risk_score: Optional[float] = Field(None, description="ML phishing probability from 03-aiml-engine")
+    ml_classification: Optional[str] = Field(None, description="ML classification (SAFE, SUSPICIOUS, HIGH_RISK)")
+    ml_confidence: Optional[float] = Field(None, description="ML confidence score")
+    ml_explanations: Optional[List[str]] = Field(None, description="Explainable AI key risk drivers")
     created_at: datetime
 
     model_config = {"from_attributes": True}
