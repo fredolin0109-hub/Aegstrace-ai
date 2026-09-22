@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AEGISTRACE Shield</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body class="soc-popup">
+  <!-- Topbar -->
+  <header class="soc-header">
+    <div class="brand">
+      <div class="logo-box">
+        <svg class="shield-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="brand-title">AEGISTRACE <span class="pulse-dot"></span></h1>
+        <p class="brand-sub">AI DEFENSE SHIELD</p>
+      </div>
+    </div>
+    <div id="backend-health-pill" class="health-pill checking">
+      <span class="dot"></span>
+      <span id="health-text">Checking API...</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="soc-main">
+    <!-- Active Target URL Bar -->
+    <div class="target-bar">
+      <div class="target-info">
+        <span class="target-label">ACTIVE TAB TARGET</span>
+        <div id="target-domain" class="target-domain">Detecting destination...</div>
+        <div id="target-url" class="target-url">---</div>
+      </div>
+      <button id="btn-copy-url" class="icon-btn" title="Copy URL">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Threat Score Gauge & Verdict -->
+    <div class="gauge-section">
+      <div class="gauge-wrapper">
+        <svg class="gauge-svg" width="140" height="140" viewBox="0 0 140 140">
+          <circle class="gauge-bg" cx="70" cy="70" r="58" />
+          <circle id="gauge-progress" class="gauge-bar" cx="70" cy="70" r="58" />
+        </svg>
+        <div class="gauge-center">
+          <span id="risk-score-num" class="score-num">--</span>
+          <span class="score-label">RISK PROB</span>
+        </div>
+      </div>
+      <div class="verdict-wrapper">
+        <div id="classification-badge" class="verdict-badge safe">INITIALIZING</div>
+        <div id="recommendation-text" class="rec-text">Analyzing active tab telemetry...</div>
+      </div>
+    </div>
+
+    <!-- Engine Breakdown Grid -->
+    <div class="engine-grid">
+      <div class="engine-card">
+        <div class="engine-title">DSA TRIE/GRAPH</div>
+        <div id="dsa-verdict-pill" class="engine-val safe">SAFE</div>
+      </div>
+      <div class="engine-card">
+        <div class="engine-title">AIML FOREST</div>
+        <div id="ml-verdict-pill" class="engine-val safe">0% PHISH</div>
+      </div>
+      <div class="engine-card">
+        <div class="engine-title">THREAT INTEL</div>
+        <div id="intel-verdict-pill" class="engine-val safe">CLEAN</div>
+      </div>
+    </div>
+
+    <!-- Indicators / Key Risk Drivers -->
+    <div class="findings-box">
+      <div class="findings-header">
+        <span class="findings-title">FORENSIC INDICATORS</span>
+        <span id="ioc-count-badge" class="ioc-badge">0 IOCs</span>
+      </div>
+      <ul id="findings-list" class="findings-list">
+        <li class="empty-finding">Target appears consistent with baseline security heuristics.</li>
+      </ul>
+    </div>
+
+    <!-- Agent Investigation Panel (Dynamic) -->
+    <div id="investigation-card" class="investigation-box hidden">
+      <div class="investigation-header">
+        <span class="investigation-title">AEGIS AGENT TRACE</span>
+        <span id="investigation-status" class="trace-badge">COMPLETED</span>
+      </div>
+      <div id="investigation-steps" class="trace-steps">
+        <!-- Injected dynamically -->
+      </div>
+      <div id="incident-pill-box" class="incident-alert hidden">
+        <span>Incident Registered: </span>
+        <strong id="incident-number-tag">INC-XXXX</strong>
+      </div>
+    </div>
+
+    <!-- Quick Operations Actions -->
+    <div class="actions-section">
+      <button id="btn-reanalyze" class="action-btn secondary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+        Re-Scan Target
+      </button>
+      <button id="btn-investigate" class="action-btn primary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        Agent Investigation
+      </button>
+    </div>
+
+    <div class="actions-section mt-2">
+      <button id="btn-rpa-contain" class="action-btn danger">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        UiPath Containment
+      </button>
+      <button id="btn-open-dashboard" class="action-btn outline">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/>
+          <rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        Open SOC
+      </button>
+    </div>
+  </main>
+
+  <footer class="soc-footer">
+    <span>AEGISTRACE v1.0.0</span>
+    <span class="footer-divider">•</span>
+    <span>Autonomous Cyber SOC</span>
+  </footer>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+/* AEGISTRACE Cyber Defense Content Warning Overlay */
+
+#aegistrace-warning-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background-color: rgba(3, 7, 18, 0.94) !important;
+  backdrop-filter: blur(12px) !important;
+  z-index: 2147483647 !important; /* Maximum z-index */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  color: #f8fafc !important;
+  box-sizing: border-box !important;
+  padding: 20px !important;
+}
+
+#aegistrace-warning-box {
+  background: linear-gradient(145deg, #090e1a, #030712) !important;
+  border: 1px solid rgba(244, 63, 94, 0.6) !important;
+  box-shadow: 0 0 50px -10px rgba(244, 63, 94, 0.5), inset 0 0 20px rgba(244, 63, 94, 0.1) !important;
+  border-radius: 16px !important;
+  max-width: 620px !important;
+  width: 100% !important;
+  padding: 32px !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+  animation: aegis-fade-in 0.3s ease-out !important;
+}
+
+@keyframes aegis-fade-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.aegis-shield-icon {
+  width: 64px !important;
+  height: 64px !important;
+  margin: 0 auto 16px auto !important;
+  color: #f43f5e !important;
+  filter: drop-shadow(0 0 15px rgba(244, 63, 94, 0.6)) !important;
+}
+
+.aegis-title {
+  font-size: 22px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.05em !important;
+  color: #fff !important;
+  margin: 0 0 8px 0 !important;
+  font-family: monospace, sans-serif !important;
+}
+
+.aegis-subtitle {
+  font-size: 13px !important;
+  color: #fda4af !important;
+  background: rgba(225, 29, 72, 0.15) !important;
+  border: 1px solid rgba(225, 29, 72, 0.4) !important;
+  padding: 6px 14px !important;
+  border-radius: 9999px !important;
+  display: inline-block !important;
+  margin-bottom: 20px !important;
+  font-weight: 600 !important;
+}
+
+.aegis-url-badge {
+  font-family: monospace !important;
+  font-size: 13px !important;
+  background: #0f172a !important;
+  border: 1px solid #1e293b !important;
+  padding: 10px 14px !important;
+  border-radius: 8px !important;
+  color: #94a3b8 !important;
+  word-break: break-all !important;
+  margin-bottom: 20px !important;
+  text-align: left !important;
+}
+
+.aegis-url-badge span {
+  color: #38bdf8 !important;
+  font-weight: 600 !important;
+}
+
+.aegis-risk-stats {
+  display: flex !important;
+  justify-content: space-around !important;
+  margin-bottom: 24px !important;
+  border-top: 1px solid #1e293b !important;
+  border-bottom: 1px solid #1e293b !important;
+  padding: 14px 0 !important;
+}
+
+.aegis-stat-item {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+.aegis-stat-label {
+  font-size: 11px !important;
+  text-transform: uppercase !important;
+  color: #64748b !important;
+  letter-spacing: 0.05em !important;
+  font-family: monospace !important;
+}
+
+.aegis-stat-val {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #f43f5e !important;
+  margin-top: 4px !important;
+  font-family: monospace !important;
+}
+
+.aegis-actions {
+  display: flex !important;
+  gap: 12px !important;
+  justify-content: center !important;
+}
+
+.aegis-btn-safe {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  padding: 12px 24px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4) !important;
+  transition: all 0.2s ease !important;
+}
+
+.aegis-btn-safe:hover {
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9) !important;
+  transform: translateY(-1px) !important;
+}
+
+.aegis-btn-bypass {
+  background: transparent !important;
+  color: #64748b !important;
+  border: 1px solid #334155 !important;
+  padding: 12px 18px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  transition: all 0.2s ease !important;
+}
+
+.aegis-btn-bypass:hover {
+  color: #cbd5e1 !important;
+  border-color: #475569 !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
