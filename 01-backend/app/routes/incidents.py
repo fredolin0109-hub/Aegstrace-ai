@@ -15,6 +15,7 @@ from app.services.incident_service import (
     list_incidents,
     get_incident_by_id,
     update_incident,
+    triage_incidents,
 )
 
 router = APIRouter(prefix="/incidents", tags=["Incidents"])
@@ -49,6 +50,7 @@ def get_incidents(
     status: Optional[str] = Query(None, description="Filter by status: OPEN, INVESTIGATING, CONTAINED, RESOLVED, FALSE_POSITIVE"),
     severity: Optional[str] = Query(None, description="Filter by severity: LOW, MEDIUM, HIGH, CRITICAL"),
     search: Optional[str] = Query(None, description="Search keyword in title, URL, or incident number"),
+    sort_by: Optional[str] = Query(None, description="Sort strategy: 'priority' (DSA Priority Queue), 'severity' (Stable MergeSort), or 'recent'"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db)
@@ -59,6 +61,7 @@ def get_incidents(
         status=status,
         severity=severity,
         search=search,
+        sort_by=sort_by,
         skip=skip,
         limit=limit,
     )
@@ -95,6 +98,51 @@ def get_incidents(
         )
 
     return IncidentListResponse(total=total, items=response_items)
+
+
+@router.get("/triage", response_model=IncidentListResponse, summary="Triage active incidents using DSA Priority Queue")
+def get_triaged_incidents(
+    status: Optional[str] = Query("OPEN", description="Filter by status: OPEN, INVESTIGATING"),
+    limit: int = Query(20, ge=1, le=100, description="Max incidents to retrieve from priority queue"),
+    db: Session = Depends(get_db)
+):
+    """
+    Automated SOC triage powered by 02-dsa-engine IncidentPriorityQueue (Indexed Max-Heap).
+    Extracts high-priority threats (Critical severity + elevated threat scores) first.
+    """
+    items = triage_incidents(db=db, status=status, limit=limit)
+    response_items = []
+    for inc in items:
+        actions = [
+            UiPathActionSummary(
+                id=act.id,
+                action_type=act.action_type,
+                execution_id=act.execution_id,
+                status=act.status,
+                executed_at=act.executed_at,
+                completed_at=act.completed_at,
+            )
+            for act in inc.uipath_actions
+        ]
+        response_items.append(
+            IncidentResponse(
+                id=inc.id,
+                incident_number=inc.incident_number,
+                url_scan_id=inc.url_scan_id,
+                url=inc.url,
+                severity=inc.severity,
+                status=inc.status,
+                title=inc.title,
+                description=inc.description,
+                assigned_to=inc.assigned_to,
+                resolved_at=inc.resolved_at,
+                created_at=inc.created_at,
+                updated_at=inc.updated_at,
+                uipath_actions=actions,
+            )
+        )
+
+    return IncidentListResponse(total=len(response_items), items=response_items)
 
 
 @router.get("/{incident_id}", response_model=IncidentResponse, summary="Get incident details by ID")

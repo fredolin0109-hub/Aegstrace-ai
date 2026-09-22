@@ -1,9 +1,17 @@
 import re
 import ipaddress
+import sys
+from pathlib import Path
 from urllib.parse import urlparse
 from typing import Dict, Any, List, Tuple, Optional
 from sqlalchemy.orm import Session
 
+# Ensure 02-dsa-engine is importable
+dsa_dir = Path(__file__).resolve().parents[3] / "02-dsa-engine"
+if str(dsa_dir) not in sys.path and dsa_dir.exists():
+    sys.path.insert(0, str(dsa_dir))
+
+from engine import global_dsa_engine, DSAScanResult
 from app.models.url_scan import URLScan
 from app.models.threat_indicator import ThreatIndicator
 from app.services.audit_service import record_audit
@@ -89,10 +97,14 @@ def extract_url_features(url: str, domain: str, is_ip: bool) -> Dict[str, Any]:
     }
 
 
-def evaluate_heuristics(features: Dict[str, Any], domain: str) -> Tuple[float, str, float, str, List[Dict[str, Any]]]:
+def evaluate_heuristics(
+    features: Dict[str, Any],
+    domain: str,
+    dsa_result: Optional[DSAScanResult] = None
+) -> Tuple[float, str, float, str, List[Dict[str, Any]]]:
     """
-    Evaluates extracted features and returns:
-    (risk_score, classification, confidence, recommendation, indicators)
+    Evaluates extracted features and fuses them with 02-dsa-engine algorithmic results.
+    Returns: (risk_score, classification, confidence, recommendation, indicators)
     """
     score = 0.05
     indicators = []
@@ -161,6 +173,31 @@ def evaluate_heuristics(features: Dict[str, Any], domain: str) -> Tuple[float, s
             "details": {"length": features["url_length"]}
         })
 
+    # Integrate DSA Engine results (HashMap reputation, Trie matches, ThreatGraph loop)
+    confidence = 0.90
+    if dsa_result:
+        # Incorporate DSA detected indicators deduplicating by (type, value)
+        existing_keys = {(ind["indicator_type"], ind.get("value", "")) for ind in indicators}
+        for dsa_ind in dsa_result.detected_indicators:
+            key = (dsa_ind["indicator_type"], dsa_ind.get("value", ""))
+            if key not in existing_keys:
+                indicators.append(dsa_ind)
+                existing_keys.add(key)
+
+        # Domain reputation evaluation
+        if dsa_result.known_domain_match:
+            dom_category = dsa_result.known_domain_match["category"]
+            if dom_category == "SAFE":
+                score = 0.0
+                confidence = 0.99
+            elif dom_category in ("MALICIOUS", "SUSPICIOUS"):
+                score = max(score, dsa_result.dsa_risk_score)
+                confidence = 0.98 if dom_category == "MALICIOUS" else 0.90
+        else:
+            # Algorithmic score fusion
+            score = max(score, dsa_result.dsa_risk_score)
+            confidence = 0.92 if score >= 0.70 else (0.85 if score >= 0.35 else 0.95)
+
     # Clamp score
     final_score = round(min(1.0, max(0.0, score)), 2)
 
@@ -168,15 +205,12 @@ def evaluate_heuristics(features: Dict[str, Any], domain: str) -> Tuple[float, s
     if final_score >= 0.70:
         classification = "HIGH_RISK"
         recommendation = "BLOCK"
-        confidence = 0.92
     elif final_score >= 0.35:
         classification = "SUSPICIOUS"
         recommendation = "INVESTIGATE"
-        confidence = 0.85
     else:
         classification = "SAFE"
         recommendation = "ALLOW"
-        confidence = 0.95
 
     return final_score, classification, confidence, recommendation, indicators
 
@@ -185,12 +219,37 @@ def perform_scan(
     db: Session,
     raw_url: str,
     client_ip: Optional[str] = None,
-    user_agent: Optional[str] = None
+    user_agent: Optional[str] = None,
+    redirect_chain: Optional[List[str]] = None,
 ) -> URLScan:
     """Execute complete scan and persist to database."""
     normalized_url, domain, ip_addr = normalize_url(raw_url)
     features = extract_url_features(normalized_url, domain, is_ip=bool(ip_addr))
-    risk_score, classification, confidence, recommendation, indicators_data = evaluate_heuristics(features, domain)
+
+    # Execute DSA Engine Pipeline (HashMap, Trie, ThreatGraph)
+    dsa_result: DSAScanResult = global_dsa_engine.analyze_url_dsa(
+        raw_url=normalized_url,
+        domain=domain,
+        ip_address=ip_addr or client_ip,
+        redirect_chain=redirect_chain,
+    )
+
+    # Attach DSA telemetry to features
+    features["dsa"] = dsa_result.to_dict()
+    features["dsa_verdict"] = dsa_result.dsa_verdict
+    features["dsa_risk_score"] = dsa_result.dsa_risk_score
+    features["graph_summary"] = dsa_result.graph_summary
+    if dsa_result.known_domain_match:
+        features["dsa_reputation"] = dsa_result.known_domain_match["category"]
+        features["threat_type"] = dsa_result.known_domain_match["threat_type"]
+    if dsa_result.trie_matches:
+        features["trie_matched_patterns"] = [m["pattern"] for m in dsa_result.trie_matches]
+
+    risk_score, classification, confidence, recommendation, indicators_data = evaluate_heuristics(
+        features=features,
+        domain=domain,
+        dsa_result=dsa_result,
+    )
 
     scan = URLScan(
         url=raw_url,
@@ -207,7 +266,7 @@ def perform_scan(
     db.commit()
     db.refresh(scan)
 
-    # Save associated threat indicators
+    # Save associated threat indicators (including DSA indicators)
     for ind in indicators_data:
         indicator = ThreatIndicator(
             url_scan_id=scan.id,
@@ -228,7 +287,12 @@ def perform_scan(
         entity_id=str(scan.id),
         action="ANALYZE",
         actor="EXTENSION" if user_agent and "extension" in user_agent.lower() else "SYSTEM",
-        details={"url": scan.url, "risk_score": risk_score, "classification": classification},
+        details={
+            "url": scan.url,
+            "risk_score": risk_score,
+            "classification": classification,
+            "dsa_verdict": dsa_result.dsa_verdict,
+        },
         ip_address=client_ip,
     )
 

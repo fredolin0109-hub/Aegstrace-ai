@@ -33,6 +33,7 @@ def analyze_url(
             raw_url=payload.url,
             client_ip=client_ip,
             user_agent=user_agent,
+            redirect_chain=payload.redirect_chain,
         )
 
         indicators_items = [
@@ -44,6 +45,21 @@ def analyze_url(
             )
             for ind in scan.threat_indicators
         ]
+
+        dsa_info = scan.features_json.get("dsa", {}) if scan.features_json else {}
+        dsa_verdict = (
+            scan.features_json.get("dsa_verdict")
+            or dsa_info.get("dsa_verdict")
+            or dsa_info.get("verdict")
+        )
+        if scan.features_json and "dsa_risk_score" in scan.features_json:
+            dsa_risk_score = scan.features_json["dsa_risk_score"]
+        elif "dsa_risk_score" in dsa_info:
+            dsa_risk_score = dsa_info["dsa_risk_score"]
+        else:
+            dsa_risk_score = dsa_info.get("risk_score")
+
+        graph_summary = scan.features_json.get("graph_summary") or dsa_info.get("graph_summary")
 
         return ScanResponse(
             id=scan.id,
@@ -57,6 +73,9 @@ def analyze_url(
             features=scan.features_json or {},
             recommendation=scan.recommendation,
             indicators=indicators_items,
+            dsa_verdict=dsa_verdict,
+            dsa_risk_score=dsa_risk_score,
+            graph_summary=graph_summary,
             created_at=scan.created_at,
         )
     except Exception as e:

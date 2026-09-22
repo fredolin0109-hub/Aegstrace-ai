@@ -77,6 +77,13 @@ def investigate_url(
         evidence_collected.append(f"High-risk phishing keywords detected: {kws}.")
     if scan.features_json.get("is_suspicious_tld"):
         evidence_collected.append(f"High-abuse top-level domain detected: .{scan.features_json.get('tld')}.")
+    if scan.features_json.get("dsa_reputation") == "MALICIOUS":
+        evidence_collected.append(f"DSA HashMap identified domain as known malicious ({scan.features_json.get('threat_type', 'THREAT')}).")
+    if scan.features_json.get("trie_matched_patterns"):
+        pats = ", ".join(scan.features_json.get("trie_matched_patterns"))
+        evidence_collected.append(f"DSA Trie detected critical phishing patterns: {pats}.")
+    if scan.features_json.get("graph_summary", {}).get("has_redirect_loop"):
+        evidence_collected.append("DSA ThreatGraph detected evasive redirect cycle/loop.")
 
     action_trace.append(AgentActionTraceItem(
         action_type="INVESTIGATE",

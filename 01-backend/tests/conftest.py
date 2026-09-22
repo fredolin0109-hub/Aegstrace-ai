@@ -1,9 +1,19 @@
 import os
+import sys
+from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+
+# Ensure 01-backend and 02-dsa-engine are in sys.path
+backend_dir = Path(__file__).resolve().parent.parent
+dsa_dir = backend_dir.parent / "02-dsa-engine"
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+if str(dsa_dir) not in sys.path and dsa_dir.exists():
+    sys.path.insert(0, str(dsa_dir))
 
 from app.database import Base, get_db
 from app.main import app

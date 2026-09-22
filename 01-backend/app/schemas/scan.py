@@ -16,6 +16,7 @@ class ScanRequest(BaseModel):
     url: str = Field(..., description="Target URL to inspect", min_length=3, max_length=2048)
     client_ip: Optional[str] = Field(None, description="Client IP address making request")
     user_agent: Optional[str] = Field(None, description="Client user agent string")
+    redirect_chain: Optional[List[str]] = Field(None, description="Observed redirect hops for loop detection")
 
 
 class ScanResponse(BaseModel):
@@ -30,6 +31,9 @@ class ScanResponse(BaseModel):
     features: Dict[str, Any] = Field(default_factory=dict)
     recommendation: str = Field(..., description="ALLOW, WARN, BLOCK, or INVESTIGATE")
     indicators: List[ThreatIndicatorItem] = Field(default_factory=list)
+    dsa_verdict: Optional[str] = Field(None, description="Verdict from 02-dsa-engine pipeline (SAFE, SUSPICIOUS, HIGH_RISK)")
+    dsa_risk_score: Optional[float] = Field(None, description="Threat score computed by 02-dsa-engine")
+    graph_summary: Optional[Dict[str, Any]] = Field(None, description="ThreatGraph topology summary and cycle detection")
     created_at: datetime
 
     model_config = {"from_attributes": True}

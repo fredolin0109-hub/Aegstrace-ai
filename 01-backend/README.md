@@ -42,6 +42,7 @@ The **AEGISTRACE Backend** is a high-performance REST API built with **FastAPI**
 │   ├── conftest.py           # In-memory SQLite & TestClient fixtures
 │   ├── test_analyze.py
 │   ├── test_dashboard.py
+│   ├── test_dsa_integration.py
 │   ├── test_health.py
 │   ├── test_incidents.py
 │   ├── test_investigate.py
@@ -62,7 +63,8 @@ The **AEGISTRACE Backend** is a high-performance REST API built with **FastAPI**
 | `POST` | `/api/analyze` | Ingest URL, extract heuristics & compute initial threat score |
 | `POST` | `/api/investigate` | Multi-step agentic investigation & autonomous escalation |
 | `POST` | `/api/incidents` | Create a security incident |
-| `GET` | `/api/incidents` | List incidents with status/severity filters & pagination |
+| `GET` | `/api/incidents` | List incidents with status/severity/search filters & sorting |
+| `GET` | `/api/incidents/triage` | Triage active incidents using DSA Priority Queue (Max-Heap) |
 | `GET` | `/api/incidents/{id}` | Detailed incident with RPA actions & threat indicators |
 | `PATCH`| `/api/incidents/{id}` | Update incident status, severity, or assignment |
 | `POST` | `/api/uipath/trigger` | Trigger an authorized UiPath RPA response |
