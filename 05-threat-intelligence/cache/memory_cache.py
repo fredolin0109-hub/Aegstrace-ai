@@ -70,12 +70,17 @@ class MemoryCache:
     def set(self, key: str, value: Any, ttl: Optional[float] = None) -> None:
         """
         Stores an item in the cache with an optional custom TTL in seconds.
+        If ttl <= 0, the item expires immediately.
+        If ttl is float('inf'), the item never expires.
         If the cache exceeds max_size, least recently used items are evicted.
         """
         with self._lock:
             now = time.time()
             effective_ttl = float(ttl) if ttl is not None else self.default_ttl
-            expires_at = now + effective_ttl if effective_ttl > 0 else None
+            if effective_ttl == float("inf"):
+                expires_at = None
+            else:
+                expires_at = now + effective_ttl
 
             if key in self._cache:
                 # Update existing key
@@ -86,11 +91,19 @@ class MemoryCache:
                 self._cache.move_to_end(key, last=True)
                 return
 
-            # Check capacity and evict LRU if necessary
+            # Check capacity: opportunistically prune an expired entry before evicting LRU
             if len(self._cache) >= self.max_size:
-                # Evict oldest / least-recently-used (first item in OrderedDict)
-                self._cache.popitem(last=False)
-                self._evictions += 1
+                expired_key = None
+                for k, v in self._cache.items():
+                    if v.is_expired(now):
+                        expired_key = k
+                        break
+                if expired_key is not None:
+                    del self._cache[expired_key]
+                else:
+                    # Evict oldest / least-recently-used (first item in OrderedDict)
+                    self._cache.popitem(last=False)
+                    self._evictions += 1
 
             self._cache[key] = CacheEntry(
                 key=key,
@@ -150,10 +163,12 @@ class MemoryCache:
     def stats(self) -> Dict[str, Any]:
         """Returns diagnostic metrics for performance monitoring."""
         with self._lock:
+            now = time.time()
+            active_size = sum(1 for v in self._cache.values() if not v.is_expired(now))
             total_requests = self._hits + self._misses
             hit_ratio = (self._hits / total_requests) if total_requests > 0 else 0.0
             return {
-                "size": len(self._cache),
+                "size": active_size,
                 "max_size": self.max_size,
                 "default_ttl": self.default_ttl,
                 "hits": self._hits,

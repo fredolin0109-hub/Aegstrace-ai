@@ -64,6 +64,7 @@ def domain_check(
     domain_or_url: Optional[str] = None,
     url: Optional[str] = None,
     domain_age_days: Optional[int] = None,
+    resolve_dns: bool = False,
 ) -> Dict[str, Any]:
     """
     Inspects deep domain signals including Shannon entropy, domain registration age,
@@ -216,8 +217,11 @@ def domain_check(
     dns_meta = None
     if default_domain_resolver and domain_clean:
         try:
-            dns_res = default_domain_resolver.resolve(domain_clean, resolve_dns=False)
+            dns_res = default_domain_resolver.resolve(domain_clean, resolve_dns=resolve_dns)
             dns_meta = dns_res.to_dict()
+            if dns_res.heuristics.get("suspicious_nameservers"):
+                risk_delta += 0.15
+                evidence.append(f"Suspicious dynamic/disposable nameserver detected: {', '.join(dns_res.nameservers)}.")
         except Exception:
             pass
 

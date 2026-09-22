@@ -31,9 +31,10 @@ class AggregatedThreatReport:
     confidence: float
     sources_consulted: List[str]
     sources_available: List[str]
-    cached: bool
-    indicators: List[Dict[str, Any]]
-    provider_details: Dict[str, Any]
+    sources_cached: List[str] = field(default_factory=list)
+    cached: bool = False
+    indicators: List[Dict[str, Any]] = field(default_factory=list)
+    provider_details: Dict[str, Any] = field(default_factory=dict)
     domain_info: Optional[Dict[str, Any]] = None
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -46,6 +47,7 @@ class AggregatedThreatReport:
             "confidence": round(self.confidence, 4),
             "sources_consulted": self.sources_consulted,
             "sources_available": self.sources_available,
+            "sources_cached": self.sources_cached,
             "cached": self.cached,
             "indicators": self.indicators,
             "provider_details": self.provider_details,
@@ -87,6 +89,17 @@ class ThreatIntelligenceAggregator:
     def detect_target_type(target: str) -> str:
         """Classifies target as 'ip', 'url', or 'domain'."""
         cleaned = target.strip()
+        # Handle bracketed IPv6 [2001:db8::1]
+        if cleaned.startswith("[") and "]" in cleaned:
+            bracket_end = cleaned.index("]")
+            try:
+                ipaddress.ip_address(cleaned[1:bracket_end])
+                if "/" in cleaned[bracket_end:]:
+                    return "url"
+                return "ip"
+            except ValueError:
+                pass
+
         try:
             ipaddress.ip_address(cleaned)
             return "ip"
@@ -127,8 +140,8 @@ class ThreatIntelligenceAggregator:
                 provider_details={},
             )
 
-        norm_target = self.cache_manager.normalize_target(target, target_type)
         actual_type = target_type or self.detect_target_type(target)
+        norm_target = self.cache_manager.normalize_target(target, actual_type)
 
         # 1. Check Cache (if not force_refresh)
         if not force_refresh:
@@ -143,6 +156,7 @@ class ThreatIntelligenceAggregator:
                     confidence=cached_data["confidence"],
                     sources_consulted=cached_data["sources_consulted"],
                     sources_available=cached_data["sources_available"],
+                    sources_cached=cached_data.get("sources_available", []),
                     cached=True,
                     indicators=cached_data["indicators"],
                     provider_details=cached_data["provider_details"],
@@ -155,10 +169,11 @@ class ThreatIntelligenceAggregator:
         if actual_type in ("domain", "url"):
             domain_meta = self.domain_resolver.resolve(norm_target)
 
-        # 3. Query All Configured Providers
+        # 3. Query All Configured Providers with Per-Provider Caching
         provider_results: List[ProviderResult] = []
         sources_consulted: List[str] = []
         sources_available: List[str] = []
+        sources_cached: List[str] = []
         provider_details: Dict[str, Any] = {}
 
         for provider in self.providers:
@@ -167,13 +182,46 @@ class ThreatIntelligenceAggregator:
 
             if is_avail:
                 sources_available.append(provider.source_name)
-                res = provider.lookup(norm_target, target_type=actual_type)
+
+                # Check per-provider cache if not force_refresh
+                cached_prov = None
+                if not force_refresh:
+                    cached_prov = self.cache_manager.get_reputation(
+                        norm_target, actual_type, provider=provider.source_name
+                    )
+
+                if cached_prov:
+                    res = ProviderResult(
+                        source_name=cached_prov.get("source_name", provider.source_name),
+                        is_malicious=cached_prov.get("is_malicious", False),
+                        threat_score=cached_prov.get("threat_score", 0.0),
+                        confidence=cached_prov.get("confidence", 0.5),
+                        categories=cached_prov.get("categories", []),
+                        raw_data=cached_prov.get("raw_data", {}),
+                        available=cached_prov.get("available", True),
+                        cached=True,
+                        error_message=cached_prov.get("error_message"),
+                    )
+                    sources_cached.append(provider.source_name)
+                else:
+                    res = provider.lookup(norm_target, target_type=actual_type)
+                    # Cache successful provider result
+                    if res.available and not res.error_message:
+                        self.cache_manager.set_reputation(
+                            norm_target,
+                            res.to_dict(),
+                            target_type=actual_type,
+                            provider=provider.source_name,
+                            ttl=ttl,
+                        )
+
                 provider_results.append(res)
                 provider_details[provider.source_name] = res.to_dict()
             else:
                 provider_details[provider.source_name] = {
                     "source_name": provider.source_name,
                     "available": False,
+                    "cached": False,
                     "error_message": "Provider not configured or API key missing",
                 }
 
@@ -193,13 +241,14 @@ class ThreatIntelligenceAggregator:
             confidence=comp_rep.confidence,
             sources_consulted=sources_consulted,
             sources_available=sources_available,
+            sources_cached=sources_cached,
             cached=False,
             indicators=comp_rep.indicators,
             provider_details=provider_details,
             domain_info=domain_info_dict,
         )
 
-        # 5. Store in Cache
+        # 5. Store Composite in Cache
         self.cache_manager.set_reputation(
             target=norm_target,
             value=report.to_dict(),

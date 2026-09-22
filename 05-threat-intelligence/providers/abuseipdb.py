@@ -1,5 +1,6 @@
 import os
 import socket
+import ipaddress
 from typing import Optional, Dict, Any, List
 import requests
 
@@ -33,13 +34,29 @@ class AbuseIPDBProvider(BaseThreatProvider):
         """Resolves target to an IP string if it is a domain or URL."""
         norm = self.normalize_target(target, target_type)
         if target_type == "ip":
-            return norm
+            try:
+                return str(ipaddress.ip_address(norm))
+            except ValueError:
+                return None
+
+        # Check if already a valid IP string
+        try:
+            return str(ipaddress.ip_address(norm))
+        except ValueError:
+            pass
 
         # Try to resolve hostname to IP
+        orig_timeout = socket.getdefaulttimeout()
         try:
-            return socket.gethostbyname(norm)
+            socket.setdefaulttimeout(self.timeout)
+            addr_info = socket.getaddrinfo(norm, None)
+            if addr_info:
+                return addr_info[0][4][0]
         except Exception:
             return None
+        finally:
+            socket.setdefaulttimeout(orig_timeout)
+        return None
 
     def lookup(self, target: str, target_type: str = "domain") -> ProviderResult:
         """Queries AbuseIPDB v2 check API for target IP."""
@@ -67,6 +84,23 @@ class AbuseIPDBProvider(BaseThreatProvider):
                 available=True,
                 error_message=f"Could not resolve {target_type} '{target}' to a valid IP address",
             )
+
+        # Handle private / loopback / reserved IPs without wasting upstream quota
+        try:
+            ip_obj = ipaddress.ip_address(ip_addr)
+            if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_reserved:
+                return ProviderResult(
+                    source_name=self.source_name,
+                    is_malicious=False,
+                    threat_score=0.0,
+                    confidence=0.99,
+                    categories=["PRIVATE_IP", "NON_ROUTABLE"],
+                    raw_data={"ipAddress": ip_addr, "is_private": True},
+                    available=True,
+                    error_message=None,
+                )
+        except ValueError:
+            pass
 
         headers = {
             "Key": self.api_key,

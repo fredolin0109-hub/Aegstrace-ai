@@ -136,3 +136,43 @@ def test_cache_manager_reputation_flow():
     # Invalidate
     mgr.invalidate("target.org")
     assert mgr.get_reputation("target.org") is None
+
+
+def test_cache_ttl_zero_expires_immediately():
+    cache = MemoryCache(max_size=10, default_ttl=60.0)
+    cache.set("zero_ttl_key", "instant_death", ttl=0)
+    assert cache.get("zero_ttl_key") is None
+    assert cache.has("zero_ttl_key") is False
+
+    cache.set("neg_ttl_key", "already_dead", ttl=-5.0)
+    assert cache.get("neg_ttl_key") is None
+
+
+def test_cache_infinite_ttl():
+    cache = MemoryCache(max_size=10, default_ttl=0.1)
+    cache.set("eternal_key", "forever", ttl=float("inf"))
+    time.sleep(0.15)
+    assert cache.get("eternal_key") == "forever"
+
+
+def test_cache_opportunistic_eviction_prunes_expired_first():
+    # Cache with capacity 2
+    cache = MemoryCache(max_size=2, default_ttl=60.0)
+    cache.set("expired_item", "old", ttl=0.1)
+    cache.set("active_item", "fresh", ttl=60.0)
+    time.sleep(0.15)
+
+    # Now cache has 2 items, but 'expired_item' is expired.
+    # Adding a 3rd item should prune 'expired_item' instead of evicting active_item!
+    cache.set("new_item", "brand_new")
+    assert cache.get("active_item") == "fresh"
+    assert cache.get("new_item") == "brand_new"
+    assert cache.get("expired_item") is None
+
+
+def test_cache_manager_ipv6_brackets_and_ports():
+    mgr = ThreatCacheManager(max_size=100, default_ttl=300.0)
+    assert mgr.normalize_target("[2001:db8::1]:8080") == "2001:db8::1"
+    assert mgr.normalize_target("2001:0db8::0001") == "2001:db8::1"
+    assert mgr.normalize_target("::1") == "::1"
+

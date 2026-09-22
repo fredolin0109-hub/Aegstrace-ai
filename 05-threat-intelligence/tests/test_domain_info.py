@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import socket
 import pytest
 
@@ -73,3 +73,44 @@ def test_dns_resolution_failure(mock_dns):
     assert meta.is_resolvable is False
     assert meta.primary_ip is None
     assert len(meta.resolved_ips) == 0
+
+
+@patch("subprocess.run")
+def test_nameservers_resolution(mock_subproc):
+    mock_res = MagicMock()
+    mock_res.returncode = 0
+    mock_res.stdout = """
+Server:  8.8.8.8
+Address:  8.8.8.8#53
+
+example.com	nameserver = a.iana-servers.net.
+example.com	nameserver = b.iana-servers.net.
+"""
+    mock_subproc.return_value = mock_res
+
+    resolver = DomainInfoResolver()
+    ns_list = resolver.resolve_nameservers("example.com")
+    assert "a.iana-servers.net" in ns_list
+    assert "b.iana-servers.net" in ns_list
+
+
+@patch("subprocess.run")
+def test_suspicious_nameservers_heuristic(mock_subproc):
+    mock_res = MagicMock()
+    mock_res.returncode = 0
+    mock_res.stdout = "bad-domain.com nameserver = ns1.ddns.net\n"
+    mock_subproc.return_value = mock_res
+
+    resolver = DomainInfoResolver()
+    meta = resolver.resolve("bad-domain.com", resolve_dns=True)
+    assert "ns1.ddns.net" in meta.nameservers
+    assert meta.heuristics["suspicious_nameservers"] is True
+    assert "nameservers" in meta.to_dict()
+
+
+def test_socket_timeout_preservation():
+    orig_timeout = socket.getdefaulttimeout()
+    resolver = DomainInfoResolver(dns_timeout=0.01)
+    _ = resolver.resolve("127.0.0.1")
+    assert socket.getdefaulttimeout() == orig_timeout
+

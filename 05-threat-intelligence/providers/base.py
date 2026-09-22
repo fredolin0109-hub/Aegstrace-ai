@@ -70,11 +70,32 @@ class BaseThreatProvider(ABC):
         if not cleaned:
             return ""
 
+        # Handle bracketed IPv6 (e.g. [2001:db8::1] or [2001:db8::1]:8080)
+        if cleaned.startswith("[") and "]" in cleaned:
+            bracket_end = cleaned.index("]")
+            host_part = cleaned[1:bracket_end]
+            try:
+                ip_obj = ipaddress.ip_address(host_part)
+                if target_type == "url" or "/" in cleaned[bracket_end:]:
+                    pass
+                else:
+                    return str(ip_obj)
+            except ValueError:
+                pass
+
         if target_type == "ip":
             try:
                 return str(ipaddress.ip_address(cleaned))
             except ValueError:
                 return cleaned
+
+        # Direct IP check
+        try:
+            ip_obj = ipaddress.ip_address(cleaned)
+            if target_type != "url":
+                return str(ip_obj)
+        except ValueError:
+            pass
 
         if target_type == "url":
             if not (cleaned.startswith("http://") or cleaned.startswith("https://")):

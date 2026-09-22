@@ -131,9 +131,9 @@ def threat_lookup(
                 is_known_threat = True
                 category = "MALICIOUS" if report.verdict == "HIGH_RISK" else "SUSPICIOUS"
                 threat_type = threat_type or "THREAT_INTEL_FLAG"
-                reputation_score = max(reputation_score, report.composite_score)
+                active_sources = report.sources_available or report.sources_consulted
                 evidence.append(
-                    f"Multi-source Threat Intel: {report.verdict} (risk={report.composite_score:.2f}) from {', '.join(report.sources_consulted)}."
+                    f"Multi-source Threat Intel: {report.verdict} (risk={report.composite_score:.2f}) verified by {', '.join(active_sources)}."
                 )
         except Exception:
             pass

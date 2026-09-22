@@ -22,12 +22,34 @@ class ThreatCacheManager:
         if not cleaned:
             return ""
 
+        # Handle bracketed IPv6 (e.g. [2001:db8::1] or [2001:db8::1]:8080)
+        if cleaned.startswith("[") and "]" in cleaned:
+            bracket_end = cleaned.index("]")
+            host_part = cleaned[1:bracket_end]
+            try:
+                ip_obj = ipaddress.ip_address(host_part)
+                if target_type == "url" or "/" in cleaned[bracket_end:]:
+                    # Retain as URL
+                    pass
+                else:
+                    return str(ip_obj)
+            except ValueError:
+                pass
+
         # Auto-detect or handle target types
         if target_type == "ip":
             try:
                 return str(ipaddress.ip_address(cleaned))
             except ValueError:
                 return cleaned
+
+        # Direct IP check
+        try:
+            ip_obj = ipaddress.ip_address(cleaned)
+            if target_type != "url":
+                return str(ip_obj)
+        except ValueError:
+            pass
 
         if target_type == "url" or "://" in cleaned:
             # Normalize URL: scheme + netloc + path without trailing slash
@@ -41,10 +63,22 @@ class ThreatCacheManager:
             except Exception:
                 return cleaned
 
+        # If target_type is None but contains path, treat as URL
+        if target_type is None and "/" in cleaned:
+            try:
+                parsed = urlparse(f"http://{cleaned}")
+                scheme = (parsed.scheme or "http").lower()
+                netloc = (parsed.netloc or "").lower()
+                path = parsed.path.rstrip("/")
+                query = f"?{parsed.query}" if parsed.query else ""
+                return f"{scheme}://{netloc}{path}{query}"
+            except Exception:
+                pass
+
         # Otherwise treat as domain: strip path and ports
         if "/" in cleaned:
             cleaned = cleaned.split("/")[0]
-        if ":" in cleaned and not cleaned.count(":") > 1: # not IPv6
+        if ":" in cleaned and not cleaned.count(":") > 1:  # not IPv6
             cleaned = cleaned.split(":")[0]
 
         return cleaned.strip(".")

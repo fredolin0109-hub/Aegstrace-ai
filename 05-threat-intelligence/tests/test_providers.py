@@ -245,3 +245,60 @@ def test_local_fallback_provider():
     res_tld = local.lookup("random-unknown-domain-test.xyz")
     assert res_tld.available is True
     assert any("SUSPICIOUS_TLD" in c for c in res_tld.categories)
+
+
+def test_abuseipdb_private_and_loopback_ip():
+    ab = AbuseIPDBProvider(api_key="mock_key")
+    res_loopback = ab.lookup("127.0.0.1", "ip")
+    assert res_loopback.available is True
+    assert res_loopback.is_malicious is False
+    assert res_loopback.threat_score == 0.0
+    assert "PRIVATE_IP" in res_loopback.categories
+
+    res_priv = ab.lookup("192.168.1.1", "ip")
+    assert res_priv.available is True
+    assert "PRIVATE_IP" in res_priv.categories
+
+
+@patch("requests.get")
+def test_alienvault_ipv6_endpoint(mock_get):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"pulse_info": {"count": 0, "pulses": []}}
+    mock_get.return_value = mock_resp
+
+    otx = AlienVaultOTXProvider(api_key="mock_key")
+    _ = otx.lookup("2001:db8::1", target_type="ip")
+    assert mock_get.called
+    endpoint_called = mock_get.call_args[0][0]
+    assert "/IPv6/" in endpoint_called
+
+
+def test_local_fallback_with_db_signatures():
+    from unittest.mock import MagicMock
+    import providers.local_fallback as lf_module
+
+    mock_rec = MagicMock()
+    mock_rec.indicator_type = "HISTORICAL_PHISH_IOC"
+    mock_rec.severity = "HIGH"
+    mock_rec.value = "ioc-flagged-target.com"
+
+    mock_db = MagicMock()
+    mock_db.query.return_value.filter.return_value.limit.return_value.all.return_value = [mock_rec]
+    mock_session_factory = MagicMock(return_value=mock_db)
+
+    orig_sl = lf_module.SessionLocal
+    orig_ti = lf_module.ThreatIndicator
+    try:
+        lf_module.SessionLocal = mock_session_factory
+        lf_module.ThreatIndicator = MagicMock()
+
+        local = LocalFallbackProvider()
+        res = local.lookup("ioc-flagged-target.com")
+        assert res.is_malicious is True
+        assert res.threat_score >= 0.85
+        assert any("DB_INDICATOR:HISTORICAL_PHISH_IOC" in c for c in res.categories)
+    finally:
+        lf_module.SessionLocal = orig_sl
+        lf_module.ThreatIndicator = orig_ti
+

@@ -1,4 +1,5 @@
 import os
+import ipaddress
 from typing import Optional, Dict, Any, List
 import requests
 
@@ -56,7 +57,12 @@ class AlienVaultOTXProvider(BaseThreatProvider):
 
         # Build indicator endpoint
         if target_type == "ip":
-            endpoint = f"{self.BASE_URL}/IPv4/{norm}/general"
+            try:
+                ip_obj = ipaddress.ip_address(norm)
+                ip_type = "IPv6" if ip_obj.version == 6 else "IPv4"
+            except ValueError:
+                ip_type = "IPv4"
+            endpoint = f"{self.BASE_URL}/{ip_type}/{norm}/general"
         elif target_type == "url":
             endpoint = f"{self.BASE_URL}/url/{norm}/general"
         else:

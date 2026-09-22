@@ -272,7 +272,23 @@ def evaluate_heuristics(
             ti_type = ti_ind.get("type", "THREAT_INTEL")
             source = ti_ind.get("source", "feed")
             details = ti_ind.get("details", {})
-            val = f"{source}: {details}" if details else f"Reported by {source}"
+            if ti_type == "PROVIDER_THREAT_DETECTION":
+                score = details.get("threat_score", 0.0)
+                cats = ", ".join(details.get("categories", [])) or "unspecified"
+                val = f"{source.upper()} detection: threat score {score:.2f} ({cats})"
+            elif ti_type == "ALLOWLIST_DOMAIN":
+                val = f"{source.upper()} allowlist: {details.get('description', 'Verified safe')}"
+            elif ti_type == "SUSPICIOUS_TLD":
+                val = f"Suspicious TLD '.{details.get('tld', '')}' identified by {source}"
+            elif ti_type == "HIGH_ENTROPY_DOMAIN":
+                val = f"High entropy ({details.get('entropy', 0.0):.2f}) identified by {source}"
+            elif ti_type == "RAW_IP_TARGET":
+                val = f"Raw IP host ({details.get('ip', '')}) identified by {source}"
+            elif ti_type == "SUSPICIOUS_NAMESERVERS":
+                val = f"Suspicious nameservers identified by {source}"
+            else:
+                val = f"{source}: {details}" if details else f"Reported by {source}"
+            val = str(val)[:500]
             key = (ti_type, val)
             if key not in existing_keys:
                 indicators.append({
@@ -423,7 +439,7 @@ def perform_scan(
         indicator = ThreatIndicator(
             url_scan_id=scan.id,
             indicator_type=ind["indicator_type"],
-            value=ind["value"],
+            value=str(ind["value"])[:500],
             severity=ind["severity"],
             details_json=ind["details"],
         )

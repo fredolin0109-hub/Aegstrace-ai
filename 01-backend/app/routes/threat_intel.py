@@ -37,10 +37,16 @@ def lookup_threat_intelligence(
             detail="Target cannot be empty"
         )
 
+    if target_type and target_type.lower() not in ("domain", "ip", "url"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="target_type must be one of: 'domain', 'ip', 'url'",
+        )
+
     try:
         report = global_threat_aggregator.lookup(
             target=cleaned_target,
-            target_type=target_type,
+            target_type=target_type.lower() if target_type else None,
             force_refresh=refresh,
         )
         return ThreatIntelLookupResponse(
@@ -51,6 +57,7 @@ def lookup_threat_intelligence(
             confidence=report.confidence,
             sources_consulted=report.sources_consulted,
             sources_available=report.sources_available,
+            sources_cached=report.sources_cached,
             cached=report.cached,
             indicators=report.indicators,
             provider_details=report.provider_details,
@@ -75,3 +82,14 @@ def get_threat_intel_stats():
         "cache_stats": global_threat_aggregator.cache_stats(),
         "available_sources": global_threat_aggregator.get_available_sources(),
     }
+
+
+@router.post(
+    "/clear-cache",
+    status_code=status.HTTP_200_OK,
+    summary="Flush threat intelligence in-memory cache",
+)
+def clear_threat_intel_cache():
+    """Flushes the entire threat intelligence cache."""
+    global_threat_aggregator.clear_cache()
+    return {"message": "Threat intelligence cache flushed successfully"}

@@ -61,21 +61,22 @@ All providers inherit from `BaseThreatProvider` and return standardized `Provide
 ### 3. DNS & Domain Metadata Resolver (`domain_info.py`)
 - Computes Shannon character entropy ($H = -\sum p_i \log_2 p_i$) to detect DGA lures.
 - Detects high-abuse Top-Level Domains (`.xyz`, `.top`, `.tk`, `.cam`, etc.).
-- Resolves IPv4 addresses and reverse PTR records with strict configurable timeouts.
+- Resolves authoritative nameservers (`NS` records) and flags suspicious dynamic/disposable DNS services.
+- Resolves IPv4 addresses and reverse PTR records with strict timeout preservation protecting the global process environment.
 - Flags direct IP host lures and excessive subdomains.
 
 ### 4. Reputation & Composite Scoring (`reputation.py`)
 - Weighted score fusion across active providers:
   $$\text{composite\_score} = \frac{\sum w_i \cdot \text{threat\_score}_i \cdot \text{conf}_i}{\sum w_i \cdot \text{conf}_i}$$
-- **Authoritative Malicious Escalation**: High-confidence detection by any primary provider overrides neutral/quiet feeds and guarantees a `HIGH_RISK` verdict ($\ge 0.75$).
+- **Authoritative Malicious Escalation & Multi-Feed Consensus**: High-confidence detection by any primary provider or consensus among $\ge 2$ malicious detections guarantees a `HIGH_RISK` verdict ($\ge 0.70$).
 - **Enterprise Allowlist Safeguard**: Verified trusted domains (e.g. `google.com`, `microsoft.com`) are protected against third-party false positives.
 - **Confidence Calibration**: Boosts confidence when providers achieve consensus and reduces confidence under conflicting signals.
 
 ### 5. Multi-Source Aggregator (`aggregator.py`)
 - **`ThreatIntelligenceAggregator`**:
-  - Automatically identifies target types (`domain`, `ip`, `url`).
-  - Checks TTL cache prior to querying network feeds.
-  - Queries active providers and compiles `sources_consulted` and `sources_available`.
+  - Automatically identifies target types (`domain`, `ip`, `url`), supporting bracketed IPv6 representations.
+  - Queries active providers with **per-provider caching** to prevent upstream rate-limit exhaustion.
+  - Tracks which providers were active, available, and cached (`sources_consulted`, `sources_available`, `sources_cached`).
   - Attaches domain heuristics and returns structured `AggregatedThreatReport`.
 
 ---
@@ -83,35 +84,36 @@ All providers inherit from `BaseThreatProvider` and return standardized `Provide
 ## Integration with AEGISTRACE Platform
 
 ### Backend Service Integration (`01-backend/`)
-1. **On-Demand API Endpoint**:
-   - `GET /api/threat-intel/lookup?target=example.com&target_type=domain&refresh=false`
-   - Returns full `ThreatIntelLookupResponse` including composite score, verdict, sources consulted, indicators, and raw provider details.
-   - `GET /api/threat-intel/stats`: Returns telemetry on cache hit ratio, eviction counts, and active providers.
+1. **On-Demand API Endpoints**:
+   - `GET /api/threat-intel/lookup?target=example.com&target_type=domain&refresh=false`:
+     Returns full `ThreatIntelLookupResponse` including composite score, verdict, sources consulted, sources cached, indicators, and raw provider details.
+   - `GET /api/threat-intel/stats`: Returns telemetry on cache hit ratio, eviction counts, active entries, and available providers.
+   - `POST /api/threat-intel/clear-cache`: Flushes the threat intelligence cache on demand.
 2. **Analysis Pipeline Fusion (`POST /api/analyze`)**:
    - `perform_scan()` in `scan_service.py` executes `global_threat_aggregator.lookup()`.
-   - Threat intelligence verdicts, scores, and indicators are fused into the scan features and persisted in the audit trail.
+   - Threat intelligence verdicts, scores, and indicators are fused into the scan features, bounded safely to avoid SQL truncation, and persisted in the audit trail.
 
 ### Agentic AI Integration (`04-agentic-ai/`)
 1. **`threat_lookup` Tool**:
    - Enhanced to query `global_threat_aggregator` alongside the local DSA engine and database indicators.
-   - Outputs comprehensive evidence and provider attribution.
+   - Outputs comprehensive evidence and active provider attribution.
 2. **`domain_check` Tool**:
-   - Enhanced with `DomainInfoResolver` telemetry, entropy calculation, and DNS heuristics.
+   - Enhanced with `DomainInfoResolver` telemetry, entropy calculation, nameserver checks, and DNS heuristics.
 
 ---
 
 ## Verification & Test Results
 
 The threat intelligence module includes comprehensive unit and integration tests:
-- **`test_cache.py`**: Validates hit/miss tracking, TTL expiration, and LRU eviction order.
-- **`test_providers.py`**: Validates mocked provider responses, error handling, rate limiting (HTTP 429), and local fallback.
-- **`test_domain_info.py`**: Validates Shannon entropy, TLD heuristics, and DNS resolution.
-- **`test_reputation.py`**: Validates score fusion, confidence calibration, and override rules.
-- **`test_aggregator.py`**: Validates full multi-source lookup, caching behavior, and source tracking.
-- **`test_threat_intel_integration.py`**: Validates end-to-end FastAPI endpoint behavior and scan pipeline integration.
+- **`test_cache.py`**: Validates hit/miss tracking, TTL expiration, zero TTL immediate expiry, infinite TTL, opportunistic eviction, and LRU eviction order.
+- **`test_providers.py`**: Validates mocked provider responses, error handling, rate limiting (HTTP 429), private/loopback IP handling, AlienVault IPv6 endpoints, and database signature matching in local fallback.
+- **`test_domain_info.py`**: Validates Shannon entropy, TLD heuristics, nameserver resolution, suspicious nameservers, and socket timeout preservation.
+- **`test_reputation.py`**: Validates score fusion, confidence calibration, multi-feed consensus, and override rules.
+- **`test_aggregator.py`**: Validates full multi-source lookup, URL normalization sequence, per-provider caching behavior, and source tracking.
+- **`test_threat_intel_integration.py`**: Validates end-to-end FastAPI endpoint behavior, cache flushing, parameter validation, and scan pipeline integration.
 
 ```bash
 # Run all tests across the complete AEGISTRACE platform
 pytest
-# Result: 182 passed in ~80s across all 5 modules (100% pass rate)
+# 100% test pass rate across all 5 platform engines
 ```

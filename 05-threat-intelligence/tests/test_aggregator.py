@@ -72,3 +72,55 @@ def test_aggregator_empty_target():
     assert report.target == ""
     assert report.verdict == "SAFE"
     assert report.composite_score == 0.0
+
+
+def test_aggregator_url_normalization_ordering():
+    agg = ThreatIntelligenceAggregator()
+    report = agg.lookup("example.com/login", force_refresh=True)
+    assert report.target_type == "url"
+    assert report.target == "http://example.com/login"
+
+
+def test_aggregator_per_provider_caching():
+    custom_cache = ThreatCacheManager(max_size=20, default_ttl=300.0)
+    agg = ThreatIntelligenceAggregator(cache_manager=custom_cache)
+
+    rep1 = agg.lookup("test-provider-cache.org", force_refresh=True)
+    assert rep1.cached is False
+
+    # Check that individual provider cache has an entry
+    cached_dsa = custom_cache.get_reputation("test-provider-cache.org", "domain", provider="local_dsa")
+    assert cached_dsa is not None
+    assert cached_dsa["source_name"] == "local_dsa"
+
+
+def test_aggregator_multiple_malicious_consensus():
+    from unittest.mock import MagicMock
+    from providers.base import BaseThreatProvider, ProviderResult
+
+    class MockMaliciousProvider(BaseThreatProvider):
+        def __init__(self, name, score):
+            super().__init__(source_name=name, weight=0.30)
+            self._score = score
+
+        def is_available(self):
+            return True
+
+        def lookup(self, target, target_type="domain"):
+            return ProviderResult(
+                source_name=self.source_name,
+                is_malicious=True,
+                threat_score=self._score,
+                confidence=0.85,
+                categories=["malware"],
+            )
+
+    p1 = MockMaliciousProvider("mock_feed_1", 0.75)
+    p2 = MockMaliciousProvider("mock_feed_2", 0.72)
+    agg = ThreatIntelligenceAggregator(providers=[p1, p2])
+
+    report = agg.lookup("dangerous-site.org", force_refresh=True)
+    assert report.verdict == "HIGH_RISK"
+    assert report.composite_score >= 0.70
+    assert len(report.sources_available) == 2
+

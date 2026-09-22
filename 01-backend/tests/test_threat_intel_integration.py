@@ -89,3 +89,33 @@ def test_scan_service_threat_intel_integration(client):
     assert mal_data["threat_intel_verdict"] == "HIGH_RISK"
     assert mal_data["threat_intel_score"] >= 0.70
     assert any(ind["indicator_type"] in ("THREAT_INTEL_REPUTATION", "TYPOSQUATTING", "PROVIDER_THREAT_DETECTION") for ind in mal_data["indicators"])
+
+
+def test_threat_intel_clear_cache_endpoint(client):
+    # Prime cache
+    _ = client.get("/api/threat-intel/lookup", params={"target": "clear-cache-domain.org"})
+
+    # Clear cache
+    clear_resp = client.post("/api/threat-intel/clear-cache")
+    assert clear_resp.status_code == 200
+    assert "flushed successfully" in clear_resp.json()["message"]
+
+    # Verify cache is empty
+    stats_resp = client.get("/api/threat-intel/stats")
+    assert stats_resp.status_code == 200
+    assert stats_resp.json()["cache_stats"]["size"] == 0
+
+
+def test_threat_intel_invalid_target_type(client):
+    resp = client.get("/api/threat-intel/lookup", params={"target": "example.com", "target_type": "invalid_type"})
+    assert resp.status_code == 422
+    assert "target_type must be one of" in resp.json()["detail"]
+
+
+def test_threat_intel_sources_cached_field(client):
+    resp = client.get("/api/threat-intel/lookup", params={"target": "example.com", "refresh": "true"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "sources_cached" in data
+    assert isinstance(data["sources_cached"], list)
+

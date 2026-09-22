@@ -121,12 +121,15 @@ class ReputationEngine:
             else 0.05
         )
 
-        # 1. Authoritative Malicious Override: Prevent dilution of high-confidence threats
+        # 1. Authoritative Malicious Override & Consensus Protection: Prevent dilution of verified threats
         if has_authoritative_malicious:
             composite_score = max(composite_score, 0.75, max_malicious_score * 0.90)
+        elif malicious_count >= 2:
+            composite_score = max(composite_score, 0.70, max_malicious_score * 0.85)
 
         # 2. Domain Heuristics Fusion
         if domain_meta:
+            heuristic_delta = 0.0
             if domain_meta.is_suspicious_tld:
                 indicators.append({
                     "type": "SUSPICIOUS_TLD",
@@ -134,8 +137,7 @@ class ReputationEngine:
                     "severity": "MEDIUM",
                     "details": {"tld": domain_meta.tld},
                 })
-                if composite_score < 0.70:
-                    composite_score += 0.15
+                heuristic_delta += 0.15
 
             if domain_meta.is_high_entropy:
                 indicators.append({
@@ -144,8 +146,7 @@ class ReputationEngine:
                     "severity": "LOW",
                     "details": {"entropy": domain_meta.entropy},
                 })
-                if composite_score < 0.70:
-                    composite_score += 0.10
+                heuristic_delta += 0.10
 
             if domain_meta.is_ip:
                 indicators.append({
@@ -154,8 +155,20 @@ class ReputationEngine:
                     "severity": "HIGH",
                     "details": {"ip": domain_meta.domain},
                 })
-                if composite_score < 0.70:
-                    composite_score += 0.20
+                heuristic_delta += 0.20
+
+            if domain_meta.heuristics.get("suspicious_nameservers"):
+                indicators.append({
+                    "type": "SUSPICIOUS_NAMESERVERS",
+                    "source": "domain_resolver",
+                    "severity": "MEDIUM",
+                    "details": {"nameservers": domain_meta.nameservers},
+                })
+                heuristic_delta += 0.15
+
+            if heuristic_delta > 0:
+                # Apply capped heuristic penalty to avoid runaway scores without external feed confirmation
+                composite_score = min(0.85, composite_score + min(0.35, heuristic_delta))
 
         # Clamp composite score between 0.0 and 1.0
         final_score = round(min(1.0, max(0.0, composite_score)), 4)

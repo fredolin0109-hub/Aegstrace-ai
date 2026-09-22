@@ -1,6 +1,8 @@
+import re
 import math
 import socket
 import ipaddress
+import subprocess
 from collections import Counter
 from urllib.parse import urlparse
 from typing import Dict, Any, List, Optional, Tuple
@@ -13,6 +15,10 @@ SUSPICIOUS_TLDS = {
     "online", "site", "vip", "support", "account", "cyou", "monster"
 }
 
+SUSPICIOUS_NS_PATTERNS = {
+    "ddns.net", "no-ip", "duckdns.org", "afraid.org", "zapto.org", "hopto.org"
+}
+
 
 @dataclass
 class DomainMetadata:
@@ -20,6 +26,7 @@ class DomainMetadata:
     primary_ip: Optional[str] = None
     resolved_ips: List[str] = field(default_factory=list)
     reverse_dns: Optional[str] = None
+    nameservers: List[str] = field(default_factory=list)
     tld: str = ""
     is_suspicious_tld: bool = False
     entropy: float = 0.0
@@ -35,6 +42,7 @@ class DomainMetadata:
             "primary_ip": self.primary_ip,
             "resolved_ips": self.resolved_ips,
             "reverse_dns": self.reverse_dns,
+            "nameservers": self.nameservers,
             "tld": self.tld,
             "is_suspicious_tld": self.is_suspicious_tld,
             "entropy": round(self.entropy, 3),
@@ -107,9 +115,10 @@ class DomainInfoResolver:
             if len(parts) > 2:
                 subdomain_count = len(parts) - 2
 
-        # DNS Resolution
+        # DNS & Nameserver Resolution
         resolved_ips: List[str] = []
         reverse_dns: Optional[str] = None
+        nameservers: List[str] = []
         is_resolvable = False
 
         if not resolve_dns:
@@ -117,14 +126,17 @@ class DomainInfoResolver:
         elif is_ip:
             resolved_ips = [domain]
             is_resolvable = True
-            # Attempt reverse PTR
+            orig_timeout = socket.getdefaulttimeout()
             try:
                 socket.setdefaulttimeout(self.dns_timeout)
                 host_info = socket.gethostbyaddr(domain)
                 reverse_dns = host_info[0]
             except Exception:
                 reverse_dns = None
+            finally:
+                socket.setdefaulttimeout(orig_timeout)
         else:
+            orig_timeout = socket.getdefaulttimeout()
             try:
                 socket.setdefaulttimeout(self.dns_timeout)
                 addr_info = socket.getaddrinfo(domain, None, socket.AF_INET)
@@ -134,7 +146,6 @@ class DomainInfoResolver:
                         resolved_ips.append(ip)
                 if resolved_ips:
                     is_resolvable = True
-                    # Attempt reverse lookup on primary IP
                     try:
                         host_info = socket.gethostbyaddr(resolved_ips[0])
                         reverse_dns = host_info[0]
@@ -142,14 +153,27 @@ class DomainInfoResolver:
                         reverse_dns = None
             except Exception:
                 is_resolvable = False
+            finally:
+                socket.setdefaulttimeout(orig_timeout)
+
+            # Query authoritative nameservers
+            nameservers = self.resolve_nameservers(domain)
 
         primary_ip = resolved_ips[0] if resolved_ips else None
+
+        # Check for suspicious nameserver patterns
+        suspicious_ns = any(
+            any(pat in ns for pat in SUSPICIOUS_NS_PATTERNS)
+            for ns in nameservers
+        )
 
         heuristics = {
             "digit_count": sum(c.isdigit() for c in domain),
             "hyphen_count": domain.count("-"),
             "domain_length": len(domain),
             "has_hex_sequence": bool(len(domain) > 16 and any(c in "0123456789abcdef" for c in domain)),
+            "nameservers_count": len(nameservers),
+            "suspicious_nameservers": suspicious_ns,
         }
 
         return DomainMetadata(
@@ -157,6 +181,7 @@ class DomainInfoResolver:
             primary_ip=primary_ip,
             resolved_ips=resolved_ips,
             reverse_dns=reverse_dns,
+            nameservers=nameservers,
             tld=tld,
             is_suspicious_tld=is_suspicious_tld,
             entropy=entropy,
@@ -166,6 +191,38 @@ class DomainInfoResolver:
             is_resolvable=is_resolvable,
             heuristics=heuristics,
         )
+
+    def resolve_nameservers(self, domain: str) -> List[str]:
+        """
+        Resolves authoritative nameservers for domain using DNS NS query.
+        Returns list of nameserver hostnames, or empty list on failure.
+        """
+        if not domain or "." not in domain:
+            return []
+        try:
+            result = subprocess.run(
+                ["nslookup", "-type=ns", domain],
+                capture_output=True,
+                text=True,
+                timeout=min(self.dns_timeout, 2.0),
+            )
+            if result.returncode == 0 and result.stdout:
+                matches = re.findall(
+                    r"nameserver\s*=\s*([a-zA-Z0-9\.\-]+)",
+                    result.stdout,
+                    re.IGNORECASE,
+                )
+                seen = set()
+                cleaned_ns = []
+                for ns in matches:
+                    ns_clean = ns.strip().lower().rstrip(".")
+                    if ns_clean and ns_clean not in seen:
+                        seen.add(ns_clean)
+                        cleaned_ns.append(ns_clean)
+                return cleaned_ns
+        except Exception:
+            pass
+        return []
 
 
 default_domain_resolver = DomainInfoResolver()

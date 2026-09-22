@@ -15,6 +15,16 @@ except ImportError:
     global_dsa_engine = None
     DomainEntry = None
 
+try:
+    _backend_path = _root / "01-backend"
+    if _backend_path.exists() and str(_backend_path) not in sys.path:
+        sys.path.insert(0, str(_backend_path))
+    from app.database import SessionLocal
+    from app.models.threat_indicator import ThreatIndicator
+except ImportError:
+    SessionLocal = None
+    ThreatIndicator = None
+
 from providers.base import BaseThreatProvider, ProviderResult
 
 
@@ -120,7 +130,32 @@ class LocalFallbackProvider(BaseThreatProvider):
         if global_dsa_engine and hasattr(global_dsa_engine, "trie"):
             trie_matches = global_dsa_engine.trie.search_patterns_in_text(target)
 
-        # 3. Local Heuristic Checks
+        # 3. Local Threat Database Signatures
+        db_indicators: List[Dict[str, Any]] = []
+        if SessionLocal and ThreatIndicator and norm_target:
+            db_session = None
+            try:
+                db_session = SessionLocal()
+                # Query indicators matching target domain/IP/URL
+                records = db_session.query(ThreatIndicator).filter(
+                    ThreatIndicator.value.ilike(f"%{norm_target}%")
+                ).limit(5).all()
+                for rec in records:
+                    db_indicators.append({
+                        "indicator_type": rec.indicator_type,
+                        "severity": rec.severity,
+                        "value": rec.value,
+                    })
+            except Exception:
+                pass
+            finally:
+                if db_session:
+                    try:
+                        db_session.close()
+                    except Exception:
+                        pass
+
+        # 4. Local Heuristic Checks
         categories: List[str] = []
         heuristic_score = 0.05
 
@@ -128,6 +163,14 @@ class LocalFallbackProvider(BaseThreatProvider):
             matched_pats = [m["pattern"] for m in trie_matches]
             categories.extend(matched_pats)
             heuristic_score = max(heuristic_score, 0.70)
+
+        if db_indicators:
+            for ind in db_indicators:
+                categories.append(f"DB_INDICATOR:{ind['indicator_type']}")
+                if ind.get("severity") in ("HIGH", "CRITICAL"):
+                    heuristic_score = max(heuristic_score, 0.85)
+                elif ind.get("severity") == "MEDIUM":
+                    heuristic_score = max(heuristic_score, 0.60)
 
         # Check suspicious TLD
         if target_type != "ip" and "." in domain_target:
@@ -138,6 +181,8 @@ class LocalFallbackProvider(BaseThreatProvider):
 
         is_mal = heuristic_score >= 0.50
         conf = 0.80 if is_mal else 0.50
+        if db_indicators:
+            conf = max(conf, 0.90)
 
         return ProviderResult(
             source_name=self.source_name,
@@ -145,6 +190,9 @@ class LocalFallbackProvider(BaseThreatProvider):
             threat_score=round(min(1.0, heuristic_score), 4),
             confidence=conf,
             categories=categories,
-            raw_data={"trie_matches": len(trie_matches)},
+            raw_data={
+                "trie_matches": len(trie_matches),
+                "db_indicators_count": len(db_indicators),
+            },
             available=True,
         )
