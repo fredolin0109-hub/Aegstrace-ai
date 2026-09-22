@@ -78,6 +78,19 @@ def analyze_url(
         if ml_explanations is None and aiml_info:
             ml_explanations = aiml_info.get("explanation")
 
+        threat_intel_info = scan.features_json.get("threat_intel", {}) if scan.features_json else {}
+        threat_intel_score = scan.features_json.get("threat_intel_score") if scan.features_json else None
+        if threat_intel_score is None and threat_intel_info:
+            threat_intel_score = threat_intel_info.get("composite_score")
+
+        threat_intel_verdict = scan.features_json.get("threat_intel_verdict") if scan.features_json else None
+        if threat_intel_verdict is None and threat_intel_info:
+            threat_intel_verdict = threat_intel_info.get("verdict")
+
+        threat_intel_sources = scan.features_json.get("threat_intel_sources") if scan.features_json else None
+        if threat_intel_sources is None and threat_intel_info:
+            threat_intel_sources = threat_intel_info.get("sources_consulted")
+
         return ScanResponse(
             id=scan.id,
             url=scan.url,
@@ -97,6 +110,9 @@ def analyze_url(
             ml_classification=ml_classification,
             ml_confidence=ml_confidence,
             ml_explanations=ml_explanations,
+            threat_intel_score=threat_intel_score,
+            threat_intel_verdict=threat_intel_verdict,
+            threat_intel_sources=threat_intel_sources,
             created_at=scan.created_at,
         )
     except Exception as e:

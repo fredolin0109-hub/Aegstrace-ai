@@ -11,12 +11,18 @@ root_dir = Path(__file__).resolve().parents[3]
 dsa_dir = root_dir / "02-dsa-engine"
 aiml_dir = root_dir / "03-aiml-engine"
 aiml_src = aiml_dir / "src"
+threat_dir = root_dir / "05-threat-intelligence"
 
-for p in [dsa_dir, aiml_dir, aiml_src]:
+for p in [dsa_dir, aiml_dir, aiml_src, threat_dir]:
     if str(p) not in sys.path and p.exists():
         sys.path.insert(0, str(p))
 
 from engine import global_dsa_engine, DSAScanResult
+
+try:
+    from aggregator import global_threat_aggregator
+except ImportError:
+    global_threat_aggregator = None
 
 try:
     from predict import predict_url
@@ -123,10 +129,12 @@ def evaluate_heuristics(
     domain: str,
     dsa_result: Optional[DSAScanResult] = None,
     ml_result: Optional[Dict[str, Any]] = None,
+    threat_intel_report: Optional[Any] = None,
 ) -> Tuple[float, str, float, str, List[Dict[str, Any]]]:
     """
-    Evaluates extracted features and fuses them with 02-dsa-engine algorithmic results
-    and 03-aiml-engine supervised machine learning predictions.
+    Evaluates extracted features and fuses them with 02-dsa-engine algorithmic results,
+    03-aiml-engine supervised machine learning predictions, and 05-threat-intelligence
+    multi-source aggregator reputation.
     Returns: (risk_score, classification, confidence, recommendation, indicators)
     """
     score = 0.05
@@ -251,6 +259,51 @@ def evaluate_heuristics(
                     }
                 })
 
+    # Integrate Threat Intelligence results (multi-source reputation aggregator)
+    if threat_intel_report:
+        ti_dict = threat_intel_report.to_dict() if hasattr(threat_intel_report, "to_dict") else threat_intel_report
+        ti_score = ti_dict.get("composite_score", 0.0)
+        ti_verdict = ti_dict.get("verdict", "SAFE")
+        ti_conf = ti_dict.get("confidence", 0.50)
+
+        # Append threat intel indicators deduplicating by (type, value)
+        existing_keys = {(ind["indicator_type"], ind.get("value", "")) for ind in indicators}
+        for ti_ind in ti_dict.get("indicators", []):
+            ti_type = ti_ind.get("type", "THREAT_INTEL")
+            source = ti_ind.get("source", "feed")
+            details = ti_ind.get("details", {})
+            val = f"{source}: {details}" if details else f"Reported by {source}"
+            key = (ti_type, val)
+            if key not in existing_keys:
+                indicators.append({
+                    "indicator_type": ti_type,
+                    "value": val,
+                    "severity": ti_ind.get("severity", "MEDIUM"),
+                    "details": details,
+                })
+                existing_keys.add(key)
+
+        if is_known_safe:
+            score = 0.0
+            confidence = 0.99
+        else:
+            score = max(score, ti_score)
+            if ti_verdict in ("SUSPICIOUS", "HIGH_RISK"):
+                confidence = max(confidence, ti_conf)
+                indicators.append({
+                    "indicator_type": "THREAT_INTEL_REPUTATION",
+                    "value": f"{ti_verdict} (composite_score={ti_score:.2f})",
+                    "severity": "HIGH" if ti_verdict == "HIGH_RISK" else "MEDIUM",
+                    "details": {
+                        "composite_score": ti_score,
+                        "verdict": ti_verdict,
+                        "confidence": ti_conf,
+                        "sources_consulted": ti_dict.get("sources_consulted", []),
+                        "sources_available": ti_dict.get("sources_available", []),
+                        "cached": ti_dict.get("cached", False),
+                    }
+                })
+
     # Clamp score
     final_score = round(min(1.0, max(0.0, score)), 2)
 
@@ -302,6 +355,17 @@ def perform_scan(
             "model_version": "fallback_error",
         }
 
+    # Execute Threat Intelligence Pipeline (VirusTotal, AbuseIPDB, AlienVault, Local DSA)
+    threat_intel_report = None
+    if global_threat_aggregator:
+        try:
+            threat_intel_report = global_threat_aggregator.lookup(
+                target=normalized_url,
+                target_type="url",
+            )
+        except Exception:
+            threat_intel_report = None
+
     # Attach DSA telemetry to features
     features["dsa"] = dsa_result.to_dict()
     features["dsa_verdict"] = dsa_result.dsa_verdict
@@ -321,11 +385,22 @@ def perform_scan(
     features["ml_explanations"] = ml_result.get("explanation", [])
     features["ml_model_version"] = ml_result.get("model_version")
 
+    # Attach Threat Intelligence telemetry to features
+    if threat_intel_report:
+        ti_data = threat_intel_report.to_dict()
+        features["threat_intel"] = ti_data
+        features["threat_intel_score"] = threat_intel_report.composite_score
+        features["threat_intel_verdict"] = threat_intel_report.verdict
+        features["threat_intel_sources"] = threat_intel_report.sources_consulted
+        features["threat_intel_available"] = threat_intel_report.sources_available
+        features["threat_intel_cached"] = threat_intel_report.cached
+
     risk_score, classification, confidence, recommendation, indicators_data = evaluate_heuristics(
         features=features,
         domain=domain,
         dsa_result=dsa_result,
         ml_result=ml_result,
+        threat_intel_report=threat_intel_report,
     )
 
     scan = URLScan(
@@ -343,7 +418,7 @@ def perform_scan(
     db.commit()
     db.refresh(scan)
 
-    # Save associated threat indicators (including DSA & AIML indicators)
+    # Save associated threat indicators (including DSA, AIML & Threat Intel indicators)
     for ind in indicators_data:
         indicator = ThreatIndicator(
             url_scan_id=scan.id,
@@ -371,6 +446,8 @@ def perform_scan(
             "dsa_verdict": dsa_result.dsa_verdict,
             "ml_classification": ml_result.get("classification"),
             "ml_risk_score": ml_result.get("risk_score"),
+            "threat_intel_verdict": features.get("threat_intel_verdict"),
+            "threat_intel_score": features.get("threat_intel_score"),
         },
         ip_address=client_ip,
     )

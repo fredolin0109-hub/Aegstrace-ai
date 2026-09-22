@@ -38,6 +38,9 @@ class ScanResponse(BaseModel):
     ml_classification: Optional[str] = Field(None, description="ML classification (SAFE, SUSPICIOUS, HIGH_RISK)")
     ml_confidence: Optional[float] = Field(None, description="ML confidence score")
     ml_explanations: Optional[List[str]] = Field(None, description="Explainable AI key risk drivers")
+    threat_intel_score: Optional[float] = Field(None, description="Composite threat intelligence score")
+    threat_intel_verdict: Optional[str] = Field(None, description="Composite threat intelligence verdict")
+    threat_intel_sources: Optional[List[str]] = Field(None, description="Active threat intelligence sources consulted")
     created_at: datetime
 
     model_config = {"from_attributes": True}

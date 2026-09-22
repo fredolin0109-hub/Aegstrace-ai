@@ -1,9 +1,25 @@
 import re
+import sys
 import math
 import ipaddress
+from pathlib import Path
 from urllib.parse import urlparse
 from typing import Dict, Any, List, Optional
 from collections import Counter
+
+_curr = Path(__file__).resolve()
+while _curr.parent != _curr:
+    if (_curr / "05-threat-intelligence").exists():
+        sp = _curr / "05-threat-intelligence"
+        if str(sp) not in sys.path:
+            sys.path.insert(0, str(sp))
+        break
+    _curr = _curr.parent
+
+try:
+    from domain_info import default_domain_resolver
+except ImportError:
+    default_domain_resolver = None
 
 SUSPICIOUS_TLDS = {
     "xyz", "top", "tk", "ml", "ga", "cf", "gq", "buzz", "club", "work",
@@ -197,6 +213,14 @@ def domain_check(
         risk_delta += 0.30
         evidence.append(f"Brand spoofing detected: unauthorized usage of '{brand_spoofed}' in host '{domain_clean}'.")
 
+    dns_meta = None
+    if default_domain_resolver and domain_clean:
+        try:
+            dns_res = default_domain_resolver.resolve(domain_clean, resolve_dns=False)
+            dns_meta = dns_res.to_dict()
+        except Exception:
+            pass
+
     return {
         "domain": domain_clean,
         "entropy": entropy,
@@ -213,4 +237,5 @@ def domain_check(
         "is_homograph_spoof": is_homograph_spoof,
         "risk_delta": round(min(0.85, risk_delta), 2),
         "evidence": evidence,
+        "dns_info": dns_meta,
     }

@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional
 _curr = Path(__file__).resolve()
 while _curr.parent != _curr:
     if (_curr / "01-backend").exists() and (_curr / "02-dsa-engine").exists():
-        for sub in ["01-backend", "02-dsa-engine", "03-aiml-engine", "03-aiml-engine/src", "04-agentic-ai"]:
+        for sub in ["01-backend", "02-dsa-engine", "03-aiml-engine", "03-aiml-engine/src", "04-agentic-ai", "05-threat-intelligence"]:
             sp = _curr / sub
             if sp.exists() and str(sp) not in sys.path:
                 sys.path.insert(0, str(sp))
@@ -16,6 +16,11 @@ while _curr.parent != _curr:
 
 from engine import global_dsa_engine
 from hashmap import DomainEntry
+
+try:
+    from aggregator import global_threat_aggregator
+except ImportError:
+    global_threat_aggregator = None
 
 
 def threat_lookup(
@@ -115,6 +120,24 @@ def threat_lookup(
         except Exception:
             pass
 
+    # 3. Query Multi-Source Threat Intelligence Aggregator (Phase 5)
+    threat_intel_data = None
+    if global_threat_aggregator and domain_clean:
+        try:
+            report = global_threat_aggregator.lookup(domain_clean, target_type="domain")
+            threat_intel_data = report.to_dict()
+
+            if report.verdict in ("HIGH_RISK", "SUSPICIOUS") and not is_known_threat:
+                is_known_threat = True
+                category = "MALICIOUS" if report.verdict == "HIGH_RISK" else "SUSPICIOUS"
+                threat_type = threat_type or "THREAT_INTEL_FLAG"
+                reputation_score = max(reputation_score, report.composite_score)
+                evidence.append(
+                    f"Multi-source Threat Intel: {report.verdict} (risk={report.composite_score:.2f}) from {', '.join(report.sources_consulted)}."
+                )
+        except Exception:
+            pass
+
     return {
         "domain": domain_clean,
         "is_known_threat": is_known_threat,
@@ -124,4 +147,5 @@ def threat_lookup(
         "metadata": metadata,
         "evidence": evidence,
         "db_indicators": db_indicators,
+        "threat_intel": threat_intel_data,
     }
