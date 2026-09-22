@@ -7,13 +7,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# Ensure 01-backend and 02-dsa-engine are in sys.path
+# Ensure 01-backend, 02-dsa-engine, 03-aiml-engine, and 04-agentic-ai are in sys.path
 backend_dir = Path(__file__).resolve().parent.parent
-dsa_dir = backend_dir.parent / "02-dsa-engine"
-if str(backend_dir) not in sys.path:
-    sys.path.insert(0, str(backend_dir))
-if str(dsa_dir) not in sys.path and dsa_dir.exists():
-    sys.path.insert(0, str(dsa_dir))
+repo_root = backend_dir.parent
+for folder in ["01-backend", "02-dsa-engine", "03-aiml-engine", "03-aiml-engine/src", "04-agentic-ai"]:
+    target = repo_root / folder
+    if target.exists() and str(target) not in sys.path:
+        sys.path.insert(0, str(target))
 
 from app.database import Base, get_db
 from app.main import app
