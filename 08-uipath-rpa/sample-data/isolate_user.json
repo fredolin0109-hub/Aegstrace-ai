@@ -1,0 +1,15 @@
+{
+  "incident_id": 105,
+  "incident_number": "INC-2026-00105",
+  "action_type": "ISOLATE_USER",
+  "parameters": {
+    "user_principal_name": "target.employee@enterprise.corp",
+    "directory_service": "AZURE_ENTRA_ID",
+    "revoke_refresh_tokens": true,
+    "force_password_reset": true,
+    "disable_account_temporary": false,
+    "soc_approver": "ANALYST_L2_AGENT"
+  },
+  "triggered_by": "AegisAgent_Autonomous_SOC",
+  "timestamp": "2026-09-23T00:30:00Z"
+}

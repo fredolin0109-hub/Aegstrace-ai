@@ -1,0 +1,15 @@
+{
+  "incident_id": 101,
+  "incident_number": "INC-2026-00101",
+  "action_type": "CONTAIN_HOST",
+  "parameters": {
+    "host_ip": "192.168.1.145",
+    "hostname": "FINANCE-DESKTOP-04",
+    "mac_address": "00:1A:2B:3C:4D:5E",
+    "isolation_type": "NETWORK_ISOLATE",
+    "containment_policy": "DISCONNECT_NIC_ALLOW_SOC_TELEMETRY",
+    "reason": "Observed high-confidence credential submission to active PayPal phishing lure."
+  },
+  "triggered_by": "AegisAgent_Autonomous_SOC",
+  "timestamp": "2026-09-23T00:30:00Z"
+}

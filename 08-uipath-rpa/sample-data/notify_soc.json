@@ -1,0 +1,15 @@
+{
+  "incident_id": 104,
+  "incident_number": "INC-2026-00104",
+  "action_type": "NOTIFY_SOC",
+  "parameters": {
+    "channel": "SLACK_TEAMS_PAGERDUTY",
+    "alert_level": "EMERGENCY",
+    "slack_channel": "#soc-incident-war-room",
+    "pagerduty_escalation_policy": "P-ONCALL-INFRA",
+    "subject": "🚨 [P1-CRITICAL] Host Containment Dispatched by AEGISTRACE",
+    "summary": "Agentic investigation confirmed phishing lure targeting finance department."
+  },
+  "triggered_by": "AegisAgent_Autonomous_SOC",
+  "timestamp": "2026-09-23T00:30:00Z"
+}

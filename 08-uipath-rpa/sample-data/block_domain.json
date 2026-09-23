@@ -1,0 +1,15 @@
+{
+  "incident_id": 102,
+  "incident_number": "INC-2026-00102",
+  "action_type": "BLOCK_DOMAIN",
+  "parameters": {
+    "domain": "login.paypal-security-update.com",
+    "ip_address": "198.51.100.42",
+    "firewall_rule_name": "AEGIS_AUTO_BLOCK_PHISH_102",
+    "dns_sinkhole_ip": "10.254.254.254",
+    "perimeter_targets": ["PaloAlto-Edge-FW-01", "Core-DNS-Sinkhole"],
+    "ttl_hours": 72
+  },
+  "triggered_by": "AegisAgent_Autonomous_SOC",
+  "timestamp": "2026-09-23T00:30:00Z"
+}

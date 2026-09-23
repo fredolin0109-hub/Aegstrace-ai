@@ -1,0 +1,14 @@
+{
+  "incident_id": 106,
+  "incident_number": "INC-2026-00106",
+  "action_type": "GENERATE_REPORT",
+  "parameters": {
+    "report_format": "PDF_AND_JSON",
+    "classification_level": "INTERNAL_SOC_CONFIDENTIAL",
+    "include_graph_topology": true,
+    "include_agent_trace": true,
+    "destination_path": "forensics/reports/INC-2026-00106_Dossier.pdf"
+  },
+  "triggered_by": "AegisAgent_Autonomous_SOC",
+  "timestamp": "2026-09-23T00:30:00Z"
+}

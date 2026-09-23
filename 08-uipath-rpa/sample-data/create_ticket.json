@@ -1,0 +1,18 @@
+{
+  "incident_id": 103,
+  "incident_number": "INC-2026-00103",
+  "action_type": "CREATE_TICKET",
+  "parameters": {
+    "ticketing_system": "SERVICENOW",
+    "ticket_priority": "P1_CRITICAL",
+    "assignment_group": "SOC_INCIDENT_RESPONSE_L2",
+    "short_description": "CRITICAL: Autonomous Agent detected active credential harvester",
+    "details": "High Shannon entropy (4.82) and 12 suspicious tokens discovered on target domain.",
+    "iocs": [
+      {"type": "DOMAIN", "value": "security-verify-portal.net"},
+      {"type": "IP", "value": "203.0.113.88"}
+    ]
+  },
+  "triggered_by": "AegisAgent_Autonomous_SOC",
+  "timestamp": "2026-09-23T00:30:00Z"
+}

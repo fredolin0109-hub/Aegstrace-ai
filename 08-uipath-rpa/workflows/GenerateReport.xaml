@@ -1,0 +1,27 @@
+<Activity mc:Ignorable="sap sap2010" x:Class="GenerateReport"
+  xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation"
+  xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation"
+  xmlns:scg="clr-namespace:System.Collections.Generic;assembly=System.Private.CoreLib"
+  xmlns:ui="http://schemas.uipath.com/workflow/activities"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <x:Members>
+    <x:Property Name="in_IncidentId" Type="InArgument(x:Int32)" />
+    <x:Property Name="in_PayloadJson" Type="InArgument(x:String)" />
+    <x:Property Name="out_ResultJson" Type="OutArgument(x:String)" />
+  </x:Members>
+  <Sequence DisplayName="Generate Report Workflow" sap:VirtualizedContainerService.HintSize="500,600">
+    <ui:LogMessage DisplayName="Log Report Start" Level="Info" Message="[&quot;[UiPath GenerateReport] Compiling forensic evidence report for Incident #&quot; + in_IncidentId.ToString()]" />
+    <ui:Comment DisplayName="Report Generation Comment" Text="Compiles threat evidence, ML findings, DSA graph loops, and agent action audit trail into a forensic PDF report." />
+    <Assign DisplayName="Format Result JSON">
+      <Assign.To>
+        <OutArgument x:TypeArguments="x:String">[out_ResultJson]</OutArgument>
+      </Assign.To>
+      <Assign.Value>
+        <InArgument x:TypeArguments="x:String">["{""action"":""GENERATE_REPORT"",""status"":""GENERATED"",""incident_id"":" + in_IncidentId.ToString() + ",""report_filename"":""AEGIS_INC_" + in_IncidentId.ToString() + "_REPORT.pdf"",""timestamp"":""" + DateTime.UtcNow.ToString("o") + """}"]</InArgument>
+      </Assign.Value>
+    </Assign>
+    <ui:LogMessage DisplayName="Log Report Done" Level="Info" Message="[&quot;[UiPath GenerateReport] Report generated successfully for Incident #&quot; + in_IncidentId.ToString()]" />
+  </Sequence>
+</Activity>

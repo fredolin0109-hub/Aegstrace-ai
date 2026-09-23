@@ -1,0 +1,97 @@
+{
+  "name": "AegisTrace_PhishingResponse",
+  "projectId": "8b51d3e8-5b4e-4f32-9c12-78d1f92e34a1",
+  "description": "AEGISTRACE Enterprise Automated Incident Remediation and Threat Containment RPA Workflows",
+  "main": "Main.xaml",
+  "dependencies": {
+    "UiPath.Mail.Activities": "[1.21.1]",
+    "UiPath.System.Activities": "[23.10.3]",
+    "UiPath.WebAPI.Activities": "[1.18.0]"
+  },
+  "webServices": [],
+  "entitiesStores": [],
+  "schemaVersion": "4.0",
+  "studioVersion": "23.10.0.0",
+  "projectVersion": "1.0.0",
+  "runtimeOptions": {
+    "autoDispose": false,
+    "netFrameworkVersion": "NETCore",
+    "isPausable": true,
+    "isAttended": false,
+    "requiresUserInteraction": false,
+    "supportsPersistence": false,
+    "workflowSerialization": "DataContract",
+    "excludedLoggedData": [
+      "Private:*",
+      "*password*"
+    ],
+    "executionType": "Workflow",
+    "readyForPiP": false,
+    "startsInPiP": false,
+    "mustRestoreAllDependencies": true,
+    "pipType": "ChildSession"
+  },
+  "designOptions": {
+    "projectProfile": "Developement",
+    "outputType": "Process",
+    "libraryOptions": {
+      "includeOriginalXaml": false,
+      "privateWorkflows": []
+    },
+    "processOptions": {
+      "ignoredFiles": []
+    },
+    "fileInfoCollection": [],
+    "modernBehavior": true
+  },
+  "arguments": {
+    "input": [
+      {
+        "name": "in_IncidentId",
+        "type": "System.Int32, System.Private.CoreLib",
+        "required": true
+      },
+      {
+        "name": "in_ActionType",
+        "type": "System.String, System.Private.CoreLib",
+        "required": true
+      },
+      {
+        "name": "in_PayloadJson",
+        "type": "System.String, System.Private.CoreLib",
+        "required": false
+      }
+    ],
+    "output": [
+      {
+        "name": "out_ExecutionStatus",
+        "type": "System.String, System.Private.CoreLib"
+      },
+      {
+        "name": "out_ResultJson",
+        "type": "System.String, System.Private.CoreLib"
+      },
+      {
+        "name": "out_ErrorMessage",
+        "type": "System.String, System.Private.CoreLib"
+      }
+    ]
+  },
+  "expressionLanguage": "VisualBasic",
+  "entryPoints": [
+    {
+      "filePath": "Main.xaml",
+      "uniqueId": "098e72cb-1d54-4a57-b4d2-f67b419b1689",
+      "input": [
+        "in_IncidentId",
+        "in_ActionType",
+        "in_PayloadJson"
+      ],
+      "output": [
+        "out_ExecutionStatus",
+        "out_ResultJson",
+        "out_ErrorMessage"
+      ]
+    }
+  ]
+}

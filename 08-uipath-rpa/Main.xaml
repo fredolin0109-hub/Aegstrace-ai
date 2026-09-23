@@ -1,0 +1,123 @@
+<Activity mc:Ignorable="sap sap2010" x:Class="Main"
+  xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation"
+  xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation"
+  xmlns:scg="clr-namespace:System.Collections.Generic;assembly=System.Private.CoreLib"
+  xmlns:ui="http://schemas.uipath.com/workflow/activities"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <x:Members>
+    <x:Property Name="in_IncidentId" Type="InArgument(x:Int32)" />
+    <x:Property Name="in_ActionType" Type="InArgument(x:String)" />
+    <x:Property Name="in_PayloadJson" Type="InArgument(x:String)" />
+    <x:Property Name="out_ExecutionStatus" Type="OutArgument(x:String)" />
+    <x:Property Name="out_ResultJson" Type="OutArgument(x:String)" />
+    <x:Property Name="out_ErrorMessage" Type="OutArgument(x:String)" />
+  </x:Members>
+  <VisualBasic.Settings>
+    <x:Null />
+  </VisualBasic.Settings>
+  <sap:VirtualizedContainerService.HintSize>800,1200</sap:VirtualizedContainerService.HintSize>
+  <sap2010:WorkflowViewState.IdRef>ActivityBuilder_1</sap2010:WorkflowViewState.IdRef>
+  <TextExpression.NamespacesForImplementation>
+    <scg:List x:TypeArguments="x:String" Capacity="32">
+      <x:String>System.Activities</x:String>
+      <x:String>System.Activities.Statements</x:String>
+      <x:String>System</x:String>
+      <x:String>System.Collections</x:String>
+      <x:String>System.Collections.Generic</x:String>
+      <x:String>UiPath.Core</x:String>
+      <x:String>UiPath.Core.Activities</x:String>
+    </scg:List>
+  </TextExpression.NamespacesForImplementation>
+  <Sequence DisplayName="AEGISTRACE Master Orchestrator Sequence" sap:VirtualizedContainerService.HintSize="600,1050">
+    <ui:LogMessage DisplayName="Log Start" Level="Info" Message="[&quot;[AEGISTRACE RPA] Initiating automated response for Incident #&quot; + in_IncidentId.ToString() + &quot; Action: &quot; + in_ActionType]" />
+    <TryCatch DisplayName="Try Execute Remediation Workflow">
+      <TryCatch.Try>
+        <Sequence DisplayName="Execution Branching">
+          <Switch x:TypeArguments="x:String" DisplayName="Route Action Type" Expression="[in_ActionType.ToUpper().Trim()]">
+            <ui:InvokeWorkflowFile Arguments="{x:Null}" ContinueOnError="{x:Null}" x:Key="CONTAIN_HOST" DisplayName="Invoke ContainHost" LogEntry="No" LogExit="No" UnSafe="False" WorkflowFileName="workflows\ContainHost.xaml">
+              <ui:InvokeWorkflowFile.Arguments>
+                <InArgument x:TypeArguments="x:Int32" x:Key="in_IncidentId">[in_IncidentId]</InArgument>
+                <InArgument x:TypeArguments="x:String" x:Key="in_PayloadJson">[in_PayloadJson]</InArgument>
+                <OutArgument x:TypeArguments="x:String" x:Key="out_ResultJson">[out_ResultJson]</OutArgument>
+              </ui:InvokeWorkflowFile.Arguments>
+            </ui:InvokeWorkflowFile>
+            <ui:InvokeWorkflowFile Arguments="{x:Null}" ContinueOnError="{x:Null}" x:Key="BLOCK_DOMAIN" DisplayName="Invoke BlockDomain" LogEntry="No" LogExit="No" UnSafe="False" WorkflowFileName="workflows\BlockDomain.xaml">
+              <ui:InvokeWorkflowFile.Arguments>
+                <InArgument x:TypeArguments="x:Int32" x:Key="in_IncidentId">[in_IncidentId]</InArgument>
+                <InArgument x:TypeArguments="x:String" x:Key="in_PayloadJson">[in_PayloadJson]</InArgument>
+                <OutArgument x:TypeArguments="x:String" x:Key="out_ResultJson">[out_ResultJson]</OutArgument>
+              </ui:InvokeWorkflowFile.Arguments>
+            </ui:InvokeWorkflowFile>
+            <ui:InvokeWorkflowFile Arguments="{x:Null}" ContinueOnError="{x:Null}" x:Key="CREATE_TICKET" DisplayName="Invoke CreateTicket" LogEntry="No" LogExit="No" UnSafe="False" WorkflowFileName="workflows\CreateTicket.xaml">
+              <ui:InvokeWorkflowFile.Arguments>
+                <InArgument x:TypeArguments="x:Int32" x:Key="in_IncidentId">[in_IncidentId]</InArgument>
+                <InArgument x:TypeArguments="x:String" x:Key="in_PayloadJson">[in_PayloadJson]</InArgument>
+                <OutArgument x:TypeArguments="x:String" x:Key="out_ResultJson">[out_ResultJson]</OutArgument>
+              </ui:InvokeWorkflowFile.Arguments>
+            </ui:InvokeWorkflowFile>
+            <ui:InvokeWorkflowFile Arguments="{x:Null}" ContinueOnError="{x:Null}" x:Key="NOTIFY_SOC" DisplayName="Invoke NotifySOC" LogEntry="No" LogExit="No" UnSafe="False" WorkflowFileName="workflows\NotifySOC.xaml">
+              <ui:InvokeWorkflowFile.Arguments>
+                <InArgument x:TypeArguments="x:Int32" x:Key="in_IncidentId">[in_IncidentId]</InArgument>
+                <InArgument x:TypeArguments="x:String" x:Key="in_PayloadJson">[in_PayloadJson]</InArgument>
+                <OutArgument x:TypeArguments="x:String" x:Key="out_ResultJson">[out_ResultJson]</OutArgument>
+              </ui:InvokeWorkflowFile.Arguments>
+            </ui:InvokeWorkflowFile>
+            <ui:InvokeWorkflowFile Arguments="{x:Null}" ContinueOnError="{x:Null}" x:Key="ISOLATE_USER" DisplayName="Invoke IsolateUser" LogEntry="No" LogExit="No" UnSafe="False" WorkflowFileName="workflows\IsolateUser.xaml">
+              <ui:InvokeWorkflowFile.Arguments>
+                <InArgument x:TypeArguments="x:Int32" x:Key="in_IncidentId">[in_IncidentId]</InArgument>
+                <InArgument x:TypeArguments="x:String" x:Key="in_PayloadJson">[in_PayloadJson]</InArgument>
+                <OutArgument x:TypeArguments="x:String" x:Key="out_ResultJson">[out_ResultJson]</OutArgument>
+              </ui:InvokeWorkflowFile.Arguments>
+            </ui:InvokeWorkflowFile>
+            <ui:InvokeWorkflowFile Arguments="{x:Null}" ContinueOnError="{x:Null}" x:Key="GENERATE_REPORT" DisplayName="Invoke GenerateReport" LogEntry="No" LogExit="No" UnSafe="False" WorkflowFileName="workflows\GenerateReport.xaml">
+              <ui:InvokeWorkflowFile.Arguments>
+                <InArgument x:TypeArguments="x:Int32" x:Key="in_IncidentId">[in_IncidentId]</InArgument>
+                <InArgument x:TypeArguments="x:String" x:Key="in_PayloadJson">[in_PayloadJson]</InArgument>
+                <OutArgument x:TypeArguments="x:String" x:Key="out_ResultJson">[out_ResultJson]</OutArgument>
+              </ui:InvokeWorkflowFile.Arguments>
+            </ui:InvokeWorkflowFile>
+          </Switch>
+          <Assign DisplayName="Assign Success Status">
+            <Assign.To>
+              <OutArgument x:TypeArguments="x:String">[out_ExecutionStatus]</OutArgument>
+            </Assign.To>
+            <Assign.Value>
+              <InArgument x:TypeArguments="x:String">SUCCESS</InArgument>
+            </Assign.Value>
+          </Assign>
+          <ui:LogMessage DisplayName="Log Completion" Level="Info" Message="[&quot;[AEGISTRACE RPA] Successfully completed &quot; + in_ActionType + &quot; for Incident #&quot; + in_IncidentId.ToString()]" />
+        </Sequence>
+      </TryCatch.Try>
+      <TryCatch.Catches>
+        <Catch x:TypeArguments="x:Exception">
+          <ActivityAction x:TypeArguments="x:Exception">
+            <ActivityAction.Argument>
+              <DelegateInArgument x:TypeArguments="x:Exception" Name="exception" />
+            </ActivityAction.Argument>
+            <Sequence DisplayName="Handle Error">
+              <Assign DisplayName="Assign Failed Status">
+                <Assign.To>
+                  <OutArgument x:TypeArguments="x:String">[out_ExecutionStatus]</OutArgument>
+                </Assign.To>
+                <Assign.Value>
+                  <InArgument x:TypeArguments="x:String">FAILED</InArgument>
+                </Assign.Value>
+              </Assign>
+              <Assign DisplayName="Assign Error Message">
+                <Assign.To>
+                  <OutArgument x:TypeArguments="x:String">[out_ErrorMessage]</OutArgument>
+                </Assign.To>
+                <Assign.Value>
+                  <InArgument x:TypeArguments="x:String">[exception.Message]</InArgument>
+                </Assign.Value>
+              </Assign>
+              <ui:LogMessage DisplayName="Log Failure" Level="Error" Message="[&quot;[AEGISTRACE RPA Error] Execution failed for Incident #&quot; + in_IncidentId.ToString() + &quot;: &quot; + exception.Message]" />
+            </Sequence>
+          </ActivityAction>
+        </Catch>
+      </TryCatch.Catches>
+    </TryCatch>
+  </Sequence>
+</Activity>
