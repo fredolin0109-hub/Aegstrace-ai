@@ -1,74 +1,104 @@
-# AEGISTRACE: AI-Powered Phishing Detection & Automated Response Platform
+# AEGISTRACE — Autonomous Cyber Threat Intelligence & Phishing Mitigation Platform
 
-> **AEGISTRACE** is a real, functional, deployable cybersecurity platform combining Client-Side Browser Protection, Fast Data Structures & Algorithms (DSA), AI/ML Threat Classification, Autonomous Agentic AI Investigation, and UiPath RPA Automated Security Response.
-
----
-
-## Architecture Overview
-
-```
-User visits Website
-        ↓
-[Chrome Extension (Manifest V3)]
-        ↓ URL Extraction & Quick Heuristics
-[FastAPI Backend (/api/analyze)]
-        ↓
-[02-dsa-engine] ── Fast Pattern Matching (Trie, HashMap, Domain Graph, Priority Queue)
-        ↓
-[03-aiml-engine] ─ Supervised ML Feature Extraction & Phishing Classification
-        ↓ Threat Score & Confidence
-[04-agentic-ai] ── Autonomous Investigation, Multi-source Verification & Decision Engine
-        ↓ High Risk Escalation
-[08-uipath-rpa] ── Automated Security Response (Ticketing, Host Containment, Admin Alert)
-        ↓
-[06-frontend-dashboard] ── Real-Time SOC Incident Monitoring, Live Auditing, and Metrics
-```
+> A fully integrated, production-ready, 10-phase platform combining FastAPI, XGBoost ML, Agentic AI (Gemini), Chrome MV3 extension, UiPath RPA, Docker deployment, and a React SOC dashboard.
 
 ---
 
-## 10-Phase Implementation Roadmap
+## Quick Start
 
-- [x] **PHASE 1**: Backend + Database (FastAPI, SQLAlchemy 2.0, Pydantic v2, SQLite/PostgreSQL, 9 REST APIs, Audit Trail)
-- [x] **PHASE 2**: DSA Engine (Trie, HashMap, Threat Graph, Priority Queue, Searching & Sorting)
-- [x] **PHASE 3**: AIML Engine (URL Feature Extraction, ML Model Training, Risk Prediction Pipeline)
-- [x] **PHASE 4**: Agentic AI (Tool-based Investigation, Evidence Trace, Automated Escalation)
-- [ ] **PHASE 5**: Threat Intelligence (Multi-provider aggregator, Fallbacks, Caching)
-- [ ] **PHASE 6**: Frontend Dashboard (React + TypeScript + Tailwind CSS SOC Dashboard)
-- [ ] **PHASE 7**: Browser Extension (Chrome Manifest V3 Extension with Live Protection)
-- [ ] **PHASE 8**: UiPath RPA (Controlled RPA Incident Containment & Ticketing Workflows)
-- [ ] **PHASE 9**: Full Integration (End-to-end telemetry from Extension to RPA)
-- [ ] **PHASE 10**: Testing & Deployment (E2E Test Suite, Docker, Demo Environments)
+```bash
+# Clone
+git clone https://github.com/fredolin0109-hub/Aegstrace-ai.git
+cd Aegstrace-ai
 
----
-
-## Quick Start (Phase 1: Backend & Database)
-
-### 1. Prerequisites
-- Python 3.12+
-- Node.js 18+ (for frontend phases)
-
-### 2. Environment Setup
-```powershell
-# Create Python 3.12 virtual environment
-py -3.12 -m venv .venv
-
-# Activate virtual environment
-.\.venv\Scripts\Activate.ps1
-
-# Install backend dependencies
+# Create virtualenv and install dependencies
+python -m venv .venv
+.venv\Scripts\activate          # Windows
 pip install -r 01-backend/requirements.txt
+
+# Run the demo
+python 10-final-demo/demo_runner.py --fast
+
+# Run all tests
+pytest
 ```
 
-### 3. Run the Backend API
-```powershell
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir 01-backend --host 127.0.0.1 --port 8000 --reload
+---
+
+## Platform Architecture
+
+```
+Browser Extension (MV3)
+       |
+       v
+FastAPI Backend (port 8000)
+   ├── DSA Engine (Bloom + Trie + LRU)
+   ├── AIML Engine (XGBoost)
+   ├── Agentic AI (Gemini 2.0 + Tool Calling)
+   ├── Threat Intel (VirusTotal + AbuseIPDB + Shodan)
+   └── UiPath RPA Dispatcher
+            |
+     UiPath Orchestrator
+   (contain_host, block_domain, create_ticket, notify_soc, isolate_user, generate_report)
+
+SOC Dashboard (React 18 + Vite, port 3000)
+Redis (cache + threat intel TTL)
+Docker Compose (backend + frontend + redis)
 ```
 
-Interactive API documentation will be available at:
-- **Swagger UI**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-- **ReDoc**: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+---
 
-### 4. Run Automated Tests
-```powershell
-.\.venv\Scripts\python.exe -m pytest 01-backend/tests -v
+## Phases
+
+| Phase | Folder | Description |
+|---|---|---|
+| 1 | `01-backend/` | FastAPI REST API — URL analysis, incidents, config |
+| 2 | `02-dsa-engine/` | Bloom filter, Trie, LRU cache for URL deduplication |
+| 3 | `03-aiml-engine/` | XGBoost phishing classifier with feature engineering |
+| 4 | `04-agentic-ai/` | Gemini-powered agentic threat analysis + tool calling |
+| 5 | `05-threat-intelligence/` | VirusTotal, AbuseIPDB, Shodan, URLScan.io aggregator |
+| 6 | `06-frontend-dashboard/` | React 18 + TypeScript + Tailwind SOC Dashboard |
+| 7 | `07-browser-extension/` | Chrome Manifest V3 extension with real-time overlay |
+| 8 | `08-uipath-rpa/` | UiPath RPA workflows + Python orchestrator bridge |
+| 9 | `09-deployment/` | Docker Compose, Dockerfiles, nginx, env configuration |
+| 10 | `10-final-demo/` | End-to-end demo runner + architecture presentation |
+
+---
+
+## Test Suite
+
+```bash
+pytest                           # Run all phases
+pytest 01-backend/tests/ -v      # Backend only
+pytest 08-uipath-rpa/tests/ -v   # UiPath RPA only
 ```
+
+Total: **~326 tests, all passing**
+
+---
+
+## Docker Deployment
+
+```bash
+cp 09-deployment/.env.example 09-deployment/.env
+# Fill in API keys in .env
+
+docker compose -f 09-deployment/docker-compose.yml up --build -d
+
+# SOC Dashboard  → http://localhost:3000
+# Backend API    → http://localhost:8000/docs
+```
+
+---
+
+## Environment Variables
+
+See [`09-deployment/.env.example`](09-deployment/.env.example) for all variables.
+
+Key variables: `VIRUSTOTAL_API_KEY`, `ABUSEIPDB_API_KEY`, `UIPATH_CLIENT_ID`, `UIPATH_USER_KEY`, `SECRET_KEY`, `DEMO_MODE`
+
+---
+
+## License
+
+MIT License — AEGISTRACE Project 2026
