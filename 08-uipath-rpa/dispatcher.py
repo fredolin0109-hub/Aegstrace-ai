@@ -98,6 +98,18 @@ SUPPORTED_ACTIONS = {
             "evidence_items_count": len(p.get("iocs", [])) or 5,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
+    },
+    "RISK_ALERT": {
+        "description": "Risk-based triage and security email dispatch (AEGISTRACE_RiskAlert)",
+        "sample_result": lambda inc_id, p: {
+            "status": "COMPLETED",
+            "workflow": "AEGISTRACE_RiskAlert",
+            "risk_score": p.get("risk_score", 94),
+            "risk_level": p.get("risk_level", "HIGH"),
+            "email_status": "SENT" if p.get("risk_score", 94) >= 70 else "SKIPPED",
+            "recipient_email": p.get("recipient_email", "security-admin@example.com"),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
     }
 }
 

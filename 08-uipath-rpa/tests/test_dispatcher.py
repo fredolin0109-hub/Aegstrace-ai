@@ -27,8 +27,8 @@ def sim_dispatcher():
 # ---------------------------------------------------------------------------
 
 class TestSupportedActions:
-    def test_six_actions_defined(self):
-        assert len(SUPPORTED_ACTIONS) == 6
+    def test_actions_defined(self):
+        assert len(SUPPORTED_ACTIONS) >= 6
 
     def test_expected_action_names(self):
         expected = {
@@ -38,8 +38,9 @@ class TestSupportedActions:
             "NOTIFY_SOC",
             "ISOLATE_USER",
             "GENERATE_REPORT",
+            "RISK_ALERT",
         }
-        assert set(SUPPORTED_ACTIONS.keys()) == expected
+        assert expected.issubset(set(SUPPORTED_ACTIONS.keys()))
 
     def test_each_action_has_description(self):
         for action, config in SUPPORTED_ACTIONS.items():

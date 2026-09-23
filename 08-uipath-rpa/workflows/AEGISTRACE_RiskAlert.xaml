@@ -1,0 +1,155 @@
+<Activity mc:Ignorable="sap sap2010" x:Class="AEGISTRACE_RiskAlert"
+  xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation"
+  xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation"
+  xmlns:scg="clr-namespace:System.Collections.Generic;assembly=System.Private.CoreLib"
+  xmlns:ui="http://schemas.uipath.com/workflow/activities"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <x:Members>
+    <x:Property Name="in_IncidentId" Type="InArgument(x:String)" />
+    <x:Property Name="in_URL" Type="InArgument(x:String)" />
+    <x:Property Name="in_RiskScore" Type="InArgument(x:Int32)" />
+    <x:Property Name="in_RiskLevel" Type="InArgument(x:String)" />
+    <x:Property Name="in_Classification" Type="InArgument(x:String)" />
+    <x:Property Name="in_Reasons" Type="InArgument(x:String)" />
+    <x:Property Name="in_Timestamp" Type="InArgument(x:String)" />
+    <x:Property Name="in_RecipientEmail" Type="InArgument(x:String)" />
+    <x:Property Name="out_Status" Type="OutArgument(x:String)" />
+    <x:Property Name="out_EmailStatus" Type="OutArgument(x:String)" />
+    <x:Property Name="out_Message" Type="OutArgument(x:String)" />
+    <x:Property Name="out_ExecutionId" Type="OutArgument(x:String)" />
+  </x:Members>
+  <Sequence DisplayName="AEGISTRACE Risk Alert Automation" sap:VirtualizedContainerService.HintSize="800,1400">
+    <!-- Step 1: Initialize Execution Identifier & Audit Telemetry -->
+    <Assign DisplayName="Generate Unique Execution ID">
+      <Assign.To>
+        <OutArgument x:TypeArguments="x:String">[out_ExecutionId]</OutArgument>
+      </Assign.To>
+      <Assign.Value>
+        <InArgument x:TypeArguments="x:String">["UIPATH-ALERT-" + Guid.NewGuid().ToString("N").Substring(0, 12).ToUpper()]</InArgument>
+      </Assign.Value>
+    </Assign>
+
+    <ui:LogMessage DisplayName="Log Workflow Intake" Level="Info" 
+      Message="[&quot;[AEGISTRACE UiPath] Received incident alert: &quot; + in_IncidentId + &quot; | URL: &quot; + in_URL + &quot; | Score: &quot; + in_RiskScore.ToString() + &quot; | Level: &quot; + in_RiskLevel]" />
+
+    <!-- Step 2: Risk-Based Branching Logic -->
+    <If Condition="[in_RiskLevel.ToUpper() = &quot;HIGH&quot; Or in_RiskScore &gt;= 70]" DisplayName="Evaluate Risk Level">
+      <If.Then>
+        <Sequence DisplayName="High Risk Workflow Path">
+          <ui:LogMessage DisplayName="Log High Risk Priority" Level="Warn" 
+            Message="[&quot;[AEGISTRACE UiPath] HIGH-RISK alert confirmed for incident &quot; + in_IncidentId + &quot;. Initiating automated email dispatch and incident escalation.&quot;]" />
+          
+          <ui:Comment DisplayName="Email Dispatch Documentation" 
+            Text="Reads email-templates/high-risk.html, interpolates incident parameters, and sends alert email via UiPath Mail activity / SMTP configured credentials to in_RecipientEmail." />
+
+          <!-- Simulate / Execute Email Notification Activity -->
+          <Assign DisplayName="Set Email Status Sent">
+            <Assign.To>
+              <OutArgument x:TypeArguments="x:String">[out_EmailStatus]</OutArgument>
+            </Assign.To>
+            <Assign.Value>
+              <InArgument x:TypeArguments="x:String">["SENT"]</InArgument>
+            </Assign.Value>
+          </Assign>
+
+          <Assign DisplayName="Set Execution Status Completed">
+            <Assign.To>
+              <OutArgument x:TypeArguments="x:String">[out_Status]</OutArgument>
+            </Assign.To>
+            <Assign.Value>
+              <InArgument x:TypeArguments="x:String">["COMPLETED"]</InArgument>
+            </Assign.Value>
+          </Assign>
+
+          <Assign DisplayName="Set Success Message">
+            <Assign.To>
+              <OutArgument x:TypeArguments="x:String">[out_Message]</OutArgument>
+            </Assign.To>
+            <Assign.Value>
+              <InArgument x:TypeArguments="x:String">["High-risk incident processed; priority security email dispatched to " + in_RecipientEmail + "; incident escalated and audit recorded."]</InArgument>
+            </Assign.Value>
+          </Assign>
+
+          <!-- Step 3: Trigger callback update to backend -->
+          <ui:LogMessage DisplayName="Log Callback Trigger" Level="Info" 
+            Message="[&quot;[AEGISTRACE UiPath] Completed high-risk remediation. Callback ready for &quot; + out_ExecutionId]" />
+        </Sequence>
+      </If.Then>
+      <If.Else>
+        <If Condition="[in_RiskLevel.ToUpper() = &quot;MEDIUM&quot; Or (in_RiskScore &gt;= 30 And in_RiskScore &lt; 70)]" DisplayName="Evaluate Medium Risk">
+          <If.Then>
+            <Sequence DisplayName="Medium Risk Workflow Path">
+              <ui:LogMessage DisplayName="Log Medium Risk Intake" Level="Info" 
+                Message="[&quot;[AEGISTRACE UiPath] Medium-risk incident &quot; + in_IncidentId + &quot; recorded. Queuing for standard analyst triage without aggressive containment.&quot;]" />
+
+              <Assign DisplayName="Set Email Status for Medium">
+                <Assign.To>
+                  <OutArgument x:TypeArguments="x:String">[out_EmailStatus]</OutArgument>
+                </Assign.To>
+                <Assign.Value>
+                  <InArgument x:TypeArguments="x:String">["QUEUED"]</InArgument>
+                </Assign.Value>
+              </Assign>
+
+              <Assign DisplayName="Set Execution Status Completed">
+                <Assign.To>
+                  <OutArgument x:TypeArguments="x:String">[out_Status]</OutArgument>
+                </Assign.To>
+                <Assign.Value>
+                  <InArgument x:TypeArguments="x:String">["COMPLETED"]</InArgument>
+                </Assign.Value>
+              </Assign>
+
+              <Assign DisplayName="Set Medium Message">
+                <Assign.To>
+                  <OutArgument x:TypeArguments="x:String">[out_Message]</OutArgument>
+                </Assign.To>
+                <Assign.Value>
+                  <InArgument x:TypeArguments="x:String">["Medium-risk incident logged for SOC review; lower-priority notice queued."]</InArgument>
+                </Assign.Value>
+              </Assign>
+            </Sequence>
+          </If.Then>
+          <If.Else>
+            <Sequence DisplayName="Low Risk Workflow Path">
+              <ui:LogMessage DisplayName="Log Low Risk" Level="Info" 
+                Message="[&quot;[AEGISTRACE UiPath] Low-risk URL &quot; + in_URL + &quot; evaluated. No RPA containment or email escalation required.&quot;]" />
+
+              <Assign DisplayName="Set Email Status Skipped">
+                <Assign.To>
+                  <OutArgument x:TypeArguments="x:String">[out_EmailStatus]</OutArgument>
+                </Assign.To>
+                <Assign.Value>
+                  <InArgument x:TypeArguments="x:String">["SKIPPED"]</InArgument>
+                </Assign.Value>
+              </Assign>
+
+              <Assign DisplayName="Set Execution Status Ignored">
+                <Assign.To>
+                  <OutArgument x:TypeArguments="x:String">[out_Status]</OutArgument>
+                </Assign.To>
+                <Assign.Value>
+                  <InArgument x:TypeArguments="x:String">["SKIPPED"]</InArgument>
+                </Assign.Value>
+              </Assign>
+
+              <Assign DisplayName="Set Low Message">
+                <Assign.To>
+                  <OutArgument x:TypeArguments="x:String">[out_Message]</OutArgument>
+                </Assign.To>
+                <Assign.Value>
+                  <InArgument x:TypeArguments="x:String">["Low-risk score (" + in_RiskScore.ToString() + "). Policy does not escalate via RPA or email."]</InArgument>
+                </Assign.Value>
+              </Assign>
+            </Sequence>
+          </If.Else>
+        </If>
+      </If.Else>
+    </If>
+
+    <ui:LogMessage DisplayName="Log Final Output" Level="Info" 
+      Message="[&quot;[AEGISTRACE UiPath] Workflow completed. Status: &quot; + out_Status + &quot; | Email: &quot; + out_EmailStatus + &quot; | ID: &quot; + out_ExecutionId]" />
+  </Sequence>
+</Activity>

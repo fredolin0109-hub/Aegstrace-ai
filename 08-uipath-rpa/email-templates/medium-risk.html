@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AEGISTRACE Security Review Required</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #030712;
+      color: #f3f4f6;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+    .container {
+      max-width: 620px;
+      margin: 24px auto;
+      background-color: #0b0f19;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(245, 158, 11, 0.15);
+    }
+    .header {
+      background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
+      padding: 24px;
+      border-bottom: 2px solid #f59e0b;
+      text-align: left;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      background-color: #fef3c7;
+      color: #92400e;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #ffffff;
+      margin: 0;
+      letter-spacing: 0.5px;
+    }
+    .content {
+      padding: 24px;
+    }
+    .lead {
+      color: #d1d5db;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-top: 0;
+      margin-bottom: 20px;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      background-color: #111827;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .data-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #1f2937;
+      font-size: 13px;
+    }
+    .data-table td.label {
+      color: #9ca3af;
+      width: 160px;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+    .data-table td.value {
+      color: #f9fafb;
+      font-family: 'Consolas', 'Courier New', monospace;
+      word-break: break-all;
+    }
+    .score-med {
+      color: #f59e0b;
+      font-weight: 800;
+      font-size: 15px;
+    }
+    .reasons-box {
+      background-color: #18181b;
+      border-left: 4px solid #f59e0b;
+      padding: 14px;
+      margin-bottom: 20px;
+      border-radius: 0 6px 6px 0;
+    }
+    .reasons-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #fde68a;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .reasons-list {
+      margin: 0;
+      padding-left: 18px;
+      color: #e4e4e7;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .cta-button {
+      display: inline-block;
+      background-color: #f59e0b;
+      color: #0b0f19 !important;
+      text-decoration: none;
+      padding: 12px 24px;
+      font-weight: 700;
+      font-size: 13px;
+      border-radius: 6px;
+      text-align: center;
+      letter-spacing: 0.5px;
+    }
+    .footer {
+      padding: 18px 24px;
+      background-color: #030712;
+      border-top: 1px solid #1f2937;
+      color: #6b7280;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="badge">SECURITY NOTICE</div>
+      <h1 class="title">AEGISTRACE SUSPICIOUS ACTIVITY REVIEW</h1>
+    </div>
+
+    <div class="content">
+      <p class="lead">
+        A suspicious URL has been identified by the AEGISTRACE analysis pipeline with elevated risk indicators. An incident has been logged for analyst evaluation.
+      </p>
+
+      <table class="data-table">
+        <tr>
+          <td class="label">Incident ID</td>
+          <td class="value"><strong>{{incident_id}}</strong></td>
+        </tr>
+        <tr>
+          <td class="label">Detected URL</td>
+          <td class="value">{{url}}</td>
+        </tr>
+        <tr>
+          <td class="label">Risk Score</td>
+          <td class="value"><span class="score-med">{{risk_score}}%</span></td>
+        </tr>
+        <tr>
+          <td class="label">Classification</td>
+          <td class="value">{{classification}}</td>
+        </tr>
+        <tr>
+          <td class="label">Risk Level</td>
+          <td class="value"><strong style="color: #f59e0b;">{{risk_level}}</strong></td>
+        </tr>
+        <tr>
+          <td class="label">Detection Time</td>
+          <td class="value">{{timestamp}}</td>
+        </tr>
+      </table>
+
+      <div class="reasons-box">
+        <div class="reasons-title">Suspicious Indicators</div>
+        <div class="reasons-list">
+          {{reasons}}
+        </div>
+      </div>
+
+      <div style="text-align: center; margin: 28px 0 12px 0;">
+        <a href="http://localhost:3000/incidents" class="cta-button">
+          Review in Dashboard
+        </a>
+      </div>
+    </div>
+
+    <div class="footer">
+      This message was generated automatically by AEGISTRACE Autonomous Threat Intelligence Platform. No sensitive credentials, tokens, or cookies are included.
+    </div>
+  </div>
+</body>
+</html>

@@ -72,8 +72,33 @@ export interface UiPathActionSummary {
   action_type: string;
   execution_id: string;
   status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' | 'SIMULATED' | string;
+  email_status?: 'QUEUED' | 'SENT' | 'FAILED' | 'SKIPPED' | 'TEST_MODE_LOGGED' | string | null;
+  alert_type?: string | null;
   executed_at: string;
   completed_at?: string | null;
+}
+
+export interface RiskAlertRequest {
+  url: string;
+  risk_score: number;
+  classification: string;
+  reasons: string[];
+  incident_id?: string;
+}
+
+export interface RiskAlertResponse {
+  success: boolean;
+  risk_level: 'HIGH' | 'MEDIUM' | 'LOW' | string;
+  incident_id: string;
+  uipath_status: string;
+  email_status: string;
+  execution_id?: string | null;
+  message?: string | null;
+}
+
+export interface RetryAutomationRequest {
+  incident_id: string;
+  retry_type: 'UIPATH' | 'EMAIL' | 'ALL' | string;
 }
 
 export interface IncidentResponse {

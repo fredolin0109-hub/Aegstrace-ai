@@ -1,0 +1,57 @@
+{
+  "high_risk_alert": {
+    "url": "http://secure-login-paypal.phish-attack.xyz/verify?token=abc123",
+    "risk_score": 94,
+    "classification": "HIGH_RISK",
+    "reasons": [
+      "Deceptive top-level domain (.xyz)",
+      "PayPal credential harvest pattern detected",
+      "Known threat indicator"
+    ],
+    "incident_id": "INC-001"
+  },
+  "medium_risk_alert": {
+    "url": "https://unverified-fileshare-portal.net/download/invoice.pdf",
+    "risk_score": 50,
+    "classification": "SUSPICIOUS",
+    "reasons": [
+      "Newly registered domain (3 days old)",
+      "Executable download masquerading as PDF"
+    ],
+    "incident_id": "INC-002"
+  },
+  "low_risk_alert": {
+    "url": "https://github.com/fredolin0109-hub/Aegstrace-ai",
+    "risk_score": 10,
+    "classification": "SAFE",
+    "reasons": [
+      "High reputation domain",
+      "Valid SSL EV certificate"
+    ],
+    "incident_id": "INC-003"
+  },
+  "uipath_callback_success": {
+    "incident_id": "INC-001",
+    "execution_id": "EXEC-UIPATH-8B970A82",
+    "status": "COMPLETED",
+    "email_status": "SENT",
+    "timestamp": "2026-09-23T10:30:00Z",
+    "details": {
+      "workflow": "AEGISTRACE_RiskAlert",
+      "recipient": "security-admin@example.com",
+      "email_subject": "[AEGISTRACE] HIGH-RISK Security Alert — INC-001"
+    }
+  },
+  "uipath_callback_failed": {
+    "incident_id": "INC-001",
+    "execution_id": "EXEC-UIPATH-8B970A82",
+    "status": "FAILED",
+    "email_status": "FAILED",
+    "timestamp": "2026-09-23T10:32:00Z",
+    "error_message": "SMTP Connection timed out to remote gateway",
+    "details": {
+      "workflow": "AEGISTRACE_RiskAlert",
+      "retry_allowed": true
+    }
+  }
+}

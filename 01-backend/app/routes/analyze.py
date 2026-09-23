@@ -91,6 +91,47 @@ def analyze_url(
         if threat_intel_sources is None and threat_intel_info:
             threat_intel_sources = threat_intel_info.get("sources_consulted")
 
+        # Export live scan and Auto-Launch UiPath (Way 2: Full Auto-Launch)
+        try:
+            import json
+            import os
+            import subprocess
+            import threading
+            from datetime import datetime, timezone
+            uipath_dir = r"C:\UiPath"
+            os.makedirs(uipath_dir, exist_ok=True)
+            risk_pct = int(round(scan.risk_score * 100)) if scan.risk_score <= 1.0 else int(round(scan.risk_score))
+            uipath_payload = {
+                "url": scan.url,
+                "risk_score": scan.risk_score,
+                "risk_percentage": risk_pct,
+                "classification": scan.classification,
+                "recommendation": scan.recommendation,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            with open(os.path.join(uipath_dir, "live_scan.json"), "w", encoding="utf-8") as f:
+                json.dump(uipath_payload, f, indent=2)
+
+            # WAY 2 FULL AUTO LAUNCH: If threat > 45%, trigger UiPath execution immediately
+            if risk_pct > 45:
+                def trigger_uipath_worker():
+                    try:
+                        uip_cli = r"C:\Program Files\UiPathPlatform\Studio\26.0.202-cloud.25004\cli\uip.cmd"
+                        proj_dir = r"C:\Users\htmlv\OneDrive\Documents\UiPath\aegistraceai"
+                        print(f"[UiPath Auto-Launch] Triggering UiPath Studio for high threat {risk_pct}% on {scan.url}...")
+                        proc = subprocess.Popen(
+                            [uip_cli, "rpa", "run", "--project-dir", proj_dir, "--file-path", "AegisTrace_LiveSync.xaml"],
+                            shell=True,
+                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+                        )
+                        print(f"[UiPath Auto-Launch] Dispatched process PID: {proc.pid}")
+                    except Exception as launch_err:
+                        print(f"[UiPath Auto-Launch Failed]: {launch_err}")
+
+                threading.Thread(target=trigger_uipath_worker, daemon=True).start()
+        except Exception as e:
+            print(f"[UiPath Integration Error]: {e}")
+
         return ScanResponse(
             id=scan.id,
             url=scan.url,

@@ -6,6 +6,7 @@ from app.routes.incidents import router as incidents_router
 from app.routes.uipath import router as uipath_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.threat_intel import router as threat_intel_router
+from app.routes.risk_alert import router as risk_alert_router
 
 api_router = APIRouter()
 
@@ -16,5 +17,6 @@ api_router.include_router(incidents_router)
 api_router.include_router(uipath_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(threat_intel_router)
+api_router.include_router(risk_alert_router)
 
 __all__ = ["api_router"]

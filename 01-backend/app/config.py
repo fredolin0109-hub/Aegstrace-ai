@@ -31,6 +31,22 @@ class Settings(BaseSettings):
     UIPATH_USER_KEY: str = ""
     UIPATH_PROCESS_NAME: str = "AegisTrace_PhishingResponse"
     UIPATH_SIMULATION_MODE: bool = True
+    UIPATH_TEST_MODE: bool = True
+
+    # Email Alert Configuration
+    ALERT_EMAIL: str = "security-admin@example.com"
+    EMAIL_TEST_MODE: bool = True
+    MEDIUM_RISK_EMAIL_ENABLED: bool = False
+    SMTP_HOST: str = "smtp.example.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "aegistrace-alerts@example.com"
+    SMTP_USE_TLS: bool = True
+
+    # Risk Thresholds
+    RISK_HIGH_THRESHOLD: int = 70
+    RISK_MEDIUM_THRESHOLD: int = 30
 
     model_config = SettingsConfigDict(
         env_file=".env",

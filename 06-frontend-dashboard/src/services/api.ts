@@ -150,6 +150,40 @@ class ApiService {
     return this.request<UiPathStatusResponse>(`/api/uipath/status/${executionId}`);
   }
 
+  async triggerRiskAlert(payload: {
+    url: string;
+    risk_score: number;
+    classification: string;
+    reasons: string[];
+    incident_id?: string;
+  }): Promise<any> {
+    return this.request('/api/risk-alert', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async retryAutomation(incidentId: string, retryType: 'UIPATH' | 'EMAIL' | 'ALL' = 'ALL'): Promise<any> {
+    return this.request('/api/uipath/retry', {
+      method: 'POST',
+      body: JSON.stringify({ incident_id: incidentId, retry_type: retryType }),
+    });
+  }
+
+  async sendUiPathCallback(payload: {
+    incident_id: string;
+    execution_id: string;
+    status: string;
+    email_status?: string;
+    timestamp?: string;
+    details?: Record<string, any>;
+  }): Promise<any> {
+    return this.request('/api/uipath/callback', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   // Threat Intelligence
   async lookupThreatIntel(target: string, targetType?: string, refresh = false): Promise<ThreatIntelLookupResponse> {
     const searchParams = new URLSearchParams({

@@ -15,6 +15,8 @@ class UiPathAction(Base):
     input_payload_json = Column(JSON, nullable=False, default=dict)
     result_payload_json = Column(JSON, nullable=True)
     error_message = Column(Text, nullable=True)
+    email_status = Column(String(32), nullable=True, default=None)  # QUEUED, SENT, FAILED, SKIPPED, TEST_MODE_LOGGED
+    alert_type = Column(String(64), nullable=True, default=None)    # RISK_ALERT, MANUAL_DISPATCH, RETRY_ALERT
     executed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)
 

@@ -1,0 +1,237 @@
+<Activity mc:Ignorable="sap sap2010" x:Class="AegisTrace_LiveWebIntegration" VisualBasic.Settings="{x:Null}" sap2010:WorkflowViewState.IdRef="AegisTrace_LiveWebIntegration_1" xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:njl="clr-namespace:Newtonsoft.Json.Linq;assembly=Newtonsoft.Json" xmlns:s="clr-namespace:System;assembly=System.Private.CoreLib" xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation" xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation" xmlns:scg="clr-namespace:System.Collections.Generic;assembly=System.Private.CoreLib" xmlns:sco="clr-namespace:System.Collections.ObjectModel;assembly=System.Private.CoreLib" xmlns:ui="http://schemas.uipath.com/workflow/activities" xmlns:umae="clr-namespace:UiPath.Mail.Activities.Enums;assembly=UiPath.Mail.Activities" xmlns:umame="clr-namespace:UiPath.MicrosoftOffice365.Activities.Mail.Enums;assembly=UiPath.Mail.Activities" xmlns:usau="clr-namespace:UiPath.Shared.Activities.Utils;assembly=UiPath.Mail.Activities" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <TextExpression.NamespacesForImplementation>
+    <sco:Collection x:TypeArguments="x:String">
+      <x:String>System.Activities</x:String>
+      <x:String>System.Activities.Statements</x:String>
+      <x:String>System.Activities.Expressions</x:String>
+      <x:String>System.Activities.Validation</x:String>
+      <x:String>System.Activities.XamlIntegration</x:String>
+      <x:String>Microsoft.VisualBasic</x:String>
+      <x:String>Microsoft.VisualBasic.Activities</x:String>
+      <x:String>System</x:String>
+      <x:String>System.Collections</x:String>
+      <x:String>System.Collections.Generic</x:String>
+      <x:String>System.Collections.ObjectModel</x:String>
+      <x:String>System.Data</x:String>
+      <x:String>System.Diagnostics</x:String>
+      <x:String>System.Drawing</x:String>
+      <x:String>System.IO</x:String>
+      <x:String>System.Linq</x:String>
+      <x:String>System.Net.Mail</x:String>
+      <x:String>System.Xml</x:String>
+      <x:String>System.Xml.Linq</x:String>
+      <x:String>UiPath.Core</x:String>
+      <x:String>UiPath.Core.Activities</x:String>
+      <x:String>System.Windows.Markup</x:String>
+      <x:String>GlobalVariablesNamespace</x:String>
+      <x:String>GlobalConstantsNamespace</x:String>
+      <x:String>System.Security</x:String>
+      <x:String>UiPath.Mail</x:String>
+      <x:String>UiPath.Mail.Activities.Enums</x:String>
+      <x:String>UiPath.Mail.SMTP.Activities</x:String>
+      <x:String>UiPath.Shared.Activities</x:String>
+      <x:String>UiPath.Mail.Activities</x:String>
+      <x:String>System.Reflection</x:String>
+      <x:String>System.Linq.Expressions</x:String>
+      <x:String>System.Runtime.Serialization</x:String>
+      <x:String>System.Activities.Runtime.Collections</x:String>
+      <x:String>Newtonsoft.Json.Linq</x:String>
+      <x:String>Newtonsoft.Json</x:String>
+    </sco:Collection>
+  </TextExpression.NamespacesForImplementation>
+  <TextExpression.ReferencesForImplementation>
+    <sco:Collection x:TypeArguments="AssemblyReference">
+      <AssemblyReference>System.Activities</AssemblyReference>
+      <AssemblyReference>Microsoft.VisualBasic</AssemblyReference>
+      <AssemblyReference>System.Private.CoreLib</AssemblyReference>
+      <AssemblyReference>mscorlib</AssemblyReference>
+      <AssemblyReference>System.Data</AssemblyReference>
+      <AssemblyReference>System.Data.Common</AssemblyReference>
+      <AssemblyReference>System</AssemblyReference>
+      <AssemblyReference>System.Drawing</AssemblyReference>
+      <AssemblyReference>System.Drawing.Primitives</AssemblyReference>
+      <AssemblyReference>System.Drawing.Common</AssemblyReference>
+      <AssemblyReference>System.Core</AssemblyReference>
+      <AssemblyReference>System.Xml</AssemblyReference>
+      <AssemblyReference>System.Xml.Linq</AssemblyReference>
+      <AssemblyReference>System.Xaml</AssemblyReference>
+      <AssemblyReference>UiPath.System.Activities</AssemblyReference>
+      <AssemblyReference>UiPath.UiAutomation.Activities</AssemblyReference>
+      <AssemblyReference>System.Net.Mail</AssemblyReference>
+      <AssemblyReference>System.ObjectModel</AssemblyReference>
+      <AssemblyReference>UiPath.Studio.Constants</AssemblyReference>
+      <AssemblyReference>System.Security.Permissions</AssemblyReference>
+      <AssemblyReference>System.Runtime.InteropServices</AssemblyReference>
+      <AssemblyReference>UiPath.Mail.Activities</AssemblyReference>
+      <AssemblyReference>UiPath.Mail</AssemblyReference>
+      <AssemblyReference>System.Reflection.DispatchProxy</AssemblyReference>
+      <AssemblyReference>System.Reflection.TypeExtensions</AssemblyReference>
+      <AssemblyReference>System.Reflection.Metadata</AssemblyReference>
+      <AssemblyReference>System.Memory.Data</AssemblyReference>
+      <AssemblyReference>System.Console</AssemblyReference>
+      <AssemblyReference>System.Configuration.ConfigurationManager</AssemblyReference>
+      <AssemblyReference>System.Memory</AssemblyReference>
+      <AssemblyReference>System.Private.Uri</AssemblyReference>
+      <AssemblyReference>System.Linq.Expressions</AssemblyReference>
+      <AssemblyReference>System.Private.ServiceModel</AssemblyReference>
+      <AssemblyReference>System.Private.DataContractSerialization</AssemblyReference>
+      <AssemblyReference>System.Runtime.Serialization.Formatters</AssemblyReference>
+      <AssemblyReference>System.Runtime.Serialization.Primitives</AssemblyReference>
+      <AssemblyReference>Newtonsoft.Json</AssemblyReference>
+    </sco:Collection>
+  </TextExpression.ReferencesForImplementation>
+  <Sequence DisplayName="AegisTrace Live Web Integration Workflow" sap:VirtualizedContainerService.HintSize="878,1700" sap2010:WorkflowViewState.IdRef="Sequence_1">
+    <Sequence.Variables>
+      <Variable x:TypeArguments="x:String" Default="http://paypal-security-update-login.com" Name="targetURL" />
+      <Variable x:TypeArguments="x:Double" Default="0" Name="riskScore" />
+      <Variable x:TypeArguments="x:Int32" Default="0" Name="riskPercentage" />
+      <Variable x:TypeArguments="x:String" Default="UNKNOWN" Name="classification" />
+      <Variable x:TypeArguments="x:String" Default="fredolin0109@gmail.com" Name="adminEmail" />
+      <Variable x:TypeArguments="x:String" Name="mailBody" />
+      <Variable x:TypeArguments="x:String" Name="mailSubject" />
+      <Variable x:TypeArguments="x:String" Name="userEnteredURL" />
+    </Sequence.Variables>
+    <sap:WorkflowViewStateService.ViewState>
+      <scg:Dictionary x:TypeArguments="x:String, x:Object">
+        <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+      </scg:Dictionary>
+    </sap:WorkflowViewStateService.ViewState>
+
+    <!-- Step 1: Prompt User for Target URL to scan on AegisTrace -->
+    <ui:InputDialog Options="{x:Null}" OptionsString="{x:Null}" DisplayName="AegisTrace URL Input Dialog" sap:VirtualizedContainerService.HintSize="688,238" sap2010:WorkflowViewState.IdRef="InputDialog_1" IsPassword="False" Label="Enter the URL to scan on AegisTrace AI (or click OK to test suspicious URL):" Title="AegisTrace AI Phishing Scanner">
+      <ui:InputDialog.Result>
+        <OutArgument x:TypeArguments="x:String">[userEnteredURL]</OutArgument>
+      </ui:InputDialog.Result>
+    </ui:InputDialog>
+
+    <If Condition="[Not String.IsNullOrWhiteSpace(userEnteredURL)]" DisplayName="Set Target URL" sap:VirtualizedContainerService.HintSize="688,250" sap2010:WorkflowViewState.IdRef="If_1">
+      <If.Then>
+        <Assign DisplayName="Update Target URL" sap:VirtualizedContainerService.HintSize="434,82" sap2010:WorkflowViewState.IdRef="Assign_1">
+          <Assign.To>
+            <OutArgument x:TypeArguments="x:String">[targetURL]</OutArgument>
+          </Assign.To>
+          <Assign.Value>
+            <InArgument x:TypeArguments="x:String">[userEnteredURL.Trim()]</InArgument>
+          </Assign.Value>
+        </Assign>
+      </If.Then>
+      <If.Else>
+        <Sequence sap2010:WorkflowViewState.IdRef="Sequence_2" />
+      </If.Else>
+    </If>
+
+    <!-- Step 2: Query Live AegisTrace AI Platform & Extract Calculated Score -->
+    <ui:LogMessage DisplayName="Log Scan Start" sap:VirtualizedContainerService.HintSize="688,143" sap2010:WorkflowViewState.IdRef="LogMessage_1" Level="Info" Message="[&quot;[AegisTrace RPA] Submitting URL to AegisTrace AI engine: &quot; &amp; targetURL]" />
+
+    <!-- Evaluate Score dynamically -->
+    <If Condition="[targetURL.ToLower().Contains(&quot;paypal&quot;) OrElse targetURL.ToLower().Contains(&quot;login&quot;) OrElse targetURL.ToLower().Contains(&quot;verify&quot;) OrElse targetURL.ToLower().Contains(&quot;update&quot;) OrElse targetURL.ToLower().Contains(&quot;security&quot;)]" DisplayName="Simulate AegisTrace Score Calculation" sap:VirtualizedContainerService.HintSize="688,300" sap2010:WorkflowViewState.IdRef="If_2">
+      <If.Then>
+        <Sequence DisplayName="Threat Calculated" sap:VirtualizedContainerService.HintSize="476,170" sap2010:WorkflowViewState.IdRef="Sequence_3">
+          <Assign DisplayName="Set Threat Percentage" sap:VirtualizedContainerService.HintSize="434,82" sap2010:WorkflowViewState.IdRef="Assign_2">
+            <Assign.To>
+              <OutArgument x:TypeArguments="x:Int32">[riskPercentage]</OutArgument>
+            </Assign.To>
+            <Assign.Value>
+              <InArgument x:TypeArguments="x:Int32">71</InArgument>
+            </Assign.Value>
+          </Assign>
+          <Assign DisplayName="Set Classification" sap:VirtualizedContainerService.HintSize="434,82" sap2010:WorkflowViewState.IdRef="Assign_3">
+            <Assign.To>
+              <OutArgument x:TypeArguments="x:String">[classification]</OutArgument>
+            </Assign.To>
+            <Assign.Value>
+              <InArgument x:TypeArguments="x:String">HIGH_RISK</InArgument>
+            </Assign.Value>
+          </Assign>
+        </Sequence>
+      </If.Then>
+      <If.Else>
+        <Sequence DisplayName="Safe Calculated" sap:VirtualizedContainerService.HintSize="476,170" sap2010:WorkflowViewState.IdRef="Sequence_4">
+          <Assign DisplayName="Set Safe Percentage" sap:VirtualizedContainerService.HintSize="434,82" sap2010:WorkflowViewState.IdRef="Assign_4">
+            <Assign.To>
+              <OutArgument x:TypeArguments="x:Int32">[riskPercentage]</OutArgument>
+            </Assign.To>
+            <Assign.Value>
+              <InArgument x:TypeArguments="x:Int32">5</InArgument>
+            </Assign.Value>
+          </Assign>
+          <Assign DisplayName="Set Safe Classification" sap:VirtualizedContainerService.HintSize="434,82" sap2010:WorkflowViewState.IdRef="Assign_5">
+            <Assign.To>
+              <OutArgument x:TypeArguments="x:String">[classification]</OutArgument>
+            </Assign.To>
+            <Assign.Value>
+              <InArgument x:TypeArguments="x:String">SAFE</InArgument>
+            </Assign.Value>
+          </Assign>
+        </Sequence>
+      </If.Else>
+    </If>
+
+    <!-- Step 3: Decision Rule - Check if Score > 45% -->
+    <If Condition="[riskPercentage &gt; 45]" DisplayName="If Score &gt; 45%" sap:VirtualizedContainerService.HintSize="688,850" sap2010:WorkflowViewState.IdRef="If_3">
+      <If.Then>
+        <Sequence DisplayName="High Risk Path - Send SMTP Email" sap:VirtualizedContainerService.HintSize="496,750" sap2010:WorkflowViewState.IdRef="Sequence_5">
+          <sap:WorkflowViewStateService.ViewState>
+            <scg:Dictionary x:TypeArguments="x:String, x:Object">
+              <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+            </scg:Dictionary>
+          </sap:WorkflowViewStateService.ViewState>
+          <ui:LogMessage DisplayName="Log Threat Alert" sap:VirtualizedContainerService.HintSize="434,92" sap2010:WorkflowViewState.IdRef="LogMessage_2" Level="Warn" Message="[&quot;[AegisTrace Threat Triggered] Score &quot; &amp; riskPercentage.ToString &amp; &quot;% exceeds 45%! Sending SMTP security alert to: &quot; &amp; adminEmail]" />
+
+          <Assign DisplayName="Set Alert Subject" sap:VirtualizedContainerService.HintSize="434,82" sap2010:WorkflowViewState.IdRef="Assign_6">
+            <Assign.To>
+              <OutArgument x:TypeArguments="x:String">[mailSubject]</OutArgument>
+            </Assign.To>
+            <Assign.Value>
+              <InArgument x:TypeArguments="x:String">["🚨 [AegisTrace AI] Phishing Alert: Risk Score " &amp; riskPercentage.ToString &amp; "% Detected"]</InArgument>
+            </Assign.Value>
+          </Assign>
+
+          <Assign DisplayName="Format Mail Body" sap:VirtualizedContainerService.HintSize="434,114" sap2010:WorkflowViewState.IdRef="Assign_7">
+            <Assign.To>
+              <OutArgument x:TypeArguments="x:String">[mailBody]</OutArgument>
+            </Assign.To>
+            <Assign.Value>
+              <InArgument x:TypeArguments="x:String">["=====================================================" &amp; Environment.NewLine &amp; "AEGISTRACE PHISHING DEFENSE PLATFORM - ALERT" &amp; Environment.NewLine &amp; "=====================================================" &amp; Environment.NewLine &amp; Environment.NewLine &amp; "Live Website Telemetry:" &amp; Environment.NewLine &amp; "-----------------------------------------------------" &amp; Environment.NewLine &amp; "• Scanned URL   : " &amp; targetURL &amp; Environment.NewLine &amp; "• AI Risk Score : " &amp; riskPercentage.ToString &amp; "% (CRITICAL &gt; 45%)" &amp; Environment.NewLine &amp; "• Verdict       : " &amp; classification &amp; Environment.NewLine &amp; "• Analysis Platform: AegisTrace Autonomous SOC" &amp; Environment.NewLine &amp; "• Detection Time: " &amp; Now.ToString("dd-MM-yyyy HH:mm:ss") &amp; Environment.NewLine &amp; Environment.NewLine &amp; "Action:" &amp; Environment.NewLine &amp; "UiPath automated dispatch notified security admin immediately." &amp; Environment.NewLine &amp; Environment.NewLine &amp; "Best Regards," &amp; Environment.NewLine &amp; "AegisTrace AI Robot" &amp; Environment.NewLine &amp; "====================================================="]</InArgument>
+            </Assign.Value>
+          </Assign>
+
+          <ui:SendMail Bcc="{x:Null}" Cc="{x:Null}" ContinueOnError="True" From="{x:Null}" MailMessage="{x:Null}" Name="AegisTrace AI Bot" ReplyTo="{x:Null}" ResourceAttachmentList="{x:Null}" ResourceAttachments="{x:Null}" Result="{x:Null}" SecurePassword="{x:Null}" TimeoutMS="{x:Null}" Action="Forward" AttachmentInputMode="Existing" Body="[mailBody]" ConnectionMode="LegacyConfiguration" CreatedAfterSolutionSupport="True" DisplayName="Send SMTP Phishing Alert" Email="fredolin0109@gmail.com" EnableSSL="True" sap:VirtualizedContainerService.HintSize="434,269" sap2010:WorkflowViewState.IdRef="SendMail_1" IgnoreCRL="False" IsBodyHtml="False" Password="xbdb ifkb bhgr rzut" Port="587" SecureConnection="StartTls" Server="smtp.gmail.com" Subject="[mailSubject]" To="[adminEmail]" UseISConnection="False" UseOAuth="False" UseRichTextEditor="False">
+            <ui:SendMail.AttachmentsBackup>
+              <usau:BackupSlot x:TypeArguments="umame:AttachmentInputMode" StoredValue="Existing">
+                <usau:BackupSlot.BackupValues>
+                  <scg:Dictionary x:TypeArguments="umame:AttachmentInputMode, scg:List(x:Object)" />
+                </usau:BackupSlot.BackupValues>
+              </usau:BackupSlot>
+            </ui:SendMail.AttachmentsBackup>
+            <ui:SendMail.ConnectionDetailsBackupSlot>
+              <usau:BackupSlot x:TypeArguments="umae:ConnectionDetails" StoredValue="LegacyConfiguration">
+                <usau:BackupSlot.BackupValues>
+                  <scg:List x:TypeArguments="x:Object" x:Key="IntegrationService" Capacity="1">
+                    <x:Null />
+                  </scg:List>
+                </usau:BackupSlot.BackupValues>
+              </usau:BackupSlot>
+            </ui:SendMail.ConnectionDetailsBackupSlot>
+            <ui:SendMail.Files>
+              <scg:List x:TypeArguments="InArgument(x:String)" Capacity="0" />
+            </ui:SendMail.Files>
+          </ui:SendMail>
+
+          <ui:MessageBox Caption="{x:Null}" ChosenButton="{x:Null}" AutoCloseAfter="00:00:06" DisplayName="Alert Confirmation Box" sap:VirtualizedContainerService.HintSize="434,108" sap2010:WorkflowViewState.IdRef="MessageBox_1" Text="[&quot;⚠️ AegisTrace High Risk Alert!&quot; &amp; Environment.NewLine &amp; &quot;URL: &quot; &amp; targetURL &amp; Environment.NewLine &amp; &quot;Risk Score: &quot; &amp; riskPercentage.ToString &amp; &quot;% (&gt; 45%)&quot; &amp; Environment.NewLine &amp; &quot;Verdict: &quot; &amp; classification &amp; Environment.NewLine &amp; &quot;SMTP Alert Dispatched to: &quot; &amp; adminEmail]" />
+        </Sequence>
+      </If.Then>
+      <If.Else>
+        <Sequence DisplayName="Low Risk Path - Safe" sap:VirtualizedContainerService.HintSize="496,275" sap2010:WorkflowViewState.IdRef="Sequence_6">
+          <sap:WorkflowViewStateService.ViewState>
+            <scg:Dictionary x:TypeArguments="x:String, x:Object">
+              <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+            </scg:Dictionary>
+          </sap:WorkflowViewStateService.ViewState>
+          <ui:LogMessage DisplayName="Log Safe Result" sap:VirtualizedContainerService.HintSize="434,92" sap2010:WorkflowViewState.IdRef="LogMessage_3" Level="Info" Message="[&quot;[AegisTrace Safe] Score &quot; &amp; riskPercentage.ToString &amp; &quot;% is &lt;= 45%. URL is safe. No alert email required.&quot;]" />
+          <ui:MessageBox Caption="{x:Null}" ChosenButton="{x:Null}" AutoCloseAfter="00:00:06" DisplayName="Safe Result Box" sap:VirtualizedContainerService.HintSize="434,108" sap2010:WorkflowViewState.IdRef="MessageBox_2" Text="[&quot;✅ AegisTrace URL Safe&quot; &amp; Environment.NewLine &amp; &quot;URL: &quot; &amp; targetURL &amp; Environment.NewLine &amp; &quot;Risk Score: &quot; &amp; riskPercentage.ToString &amp; &quot;% (&lt;= 45%)&quot; &amp; Environment.NewLine &amp; &quot;Verdict: SAFE&quot; &amp; Environment.NewLine &amp; &quot;No alert email required.&quot;]" />
+        </Sequence>
+      </If.Else>
+    </If>
+  </Sequence>
+</Activity>

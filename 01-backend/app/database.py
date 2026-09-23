@@ -35,6 +35,21 @@ def get_db():
 
 
 def init_db():
-    """Create all database tables on application startup."""
+    """Create all database tables on application startup and perform forward column migrations."""
     import app.models  # noqa: F401 - ensure models are imported before create_all
     Base.metadata.create_all(bind=engine)
+
+    # Safe schema migration for SQLite: add email_status and alert_type if missing
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(engine)
+        if "uipath_actions" in inspector.get_table_names():
+            columns = [c["name"] for c in inspector.get_columns("uipath_actions")]
+            with engine.connect() as conn:
+                if "email_status" not in columns:
+                    conn.execute(text("ALTER TABLE uipath_actions ADD COLUMN email_status VARCHAR(32)"))
+                if "alert_type" not in columns:
+                    conn.execute(text("ALTER TABLE uipath_actions ADD COLUMN alert_type VARCHAR(64)"))
+                conn.commit()
+    except Exception as exc:
+        print(f"[AEGISTRACE DB] Migration check notice: {exc}")
