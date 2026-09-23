@@ -1,0 +1,83 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AEGISTRACE — Docker Compose Orchestration
+# Services: backend (FastAPI), frontend (React/nginx), redis (cache/queue)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── Backend: FastAPI + all ML/DSA engines ─────────────────────────────────
+  backend:
+    build:
+      context: ../01-backend
+      dockerfile: ../09-deployment/Dockerfile.backend
+    image: aegistrace-backend:latest
+    container_name: aegistrace-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DEMO_MODE=${DEMO_MODE:-true}
+      - REDIS_URL=redis://redis:6379/0
+      - CORS_ORIGINS=http://localhost,http://frontend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - backend-logs:/app/logs
+      - ml-models:/app/models
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - aegistrace-net
+
+  # ── Frontend: React + Vite built, served via nginx ────────────────────────
+  frontend:
+    build:
+      context: ../06-frontend-dashboard
+      dockerfile: ../09-deployment/Dockerfile.frontend
+    image: aegistrace-frontend:latest
+    container_name: aegistrace-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - aegistrace-net
+
+  # ── Redis: In-memory cache + threat intel TTL store ───────────────────────
+  redis:
+    image: redis:7.4-alpine
+    container_name: aegistrace-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save ""
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aegistrace-net
+
+# ── Named Volumes ─────────────────────────────────────────────────────────────
+volumes:
+  backend-logs:
+  ml-models:
+  redis-data:
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  aegistrace-net:
+    driver: bridge
