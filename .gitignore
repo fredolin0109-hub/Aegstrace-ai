@@ -8,6 +8,8 @@ env/
 build/
 develop-eggs/
 dist/
+!07-browser-extension/dist/
+!07-browser-extension/dist/*.zip
 downloads/
 eggs/
 .eggs/
@@ -43,7 +45,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-dist/
+06-frontend-dashboard/dist/
 build/
 *.tsbuildinfo
 

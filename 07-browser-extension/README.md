@@ -113,4 +113,17 @@ Run the full extension test suite via pytest:
 ```bash
 .\.venv\Scripts\pytest 07-browser-extension/tests/ -v
 ```
-All 17 tests validate Manifest V3 structure, automatic tab reading permissions, automated email triggers, notification creation, and popup controls.
+All 18 tests validate Manifest V3 structure, automatic tab reading permissions, automated email triggers, notification creation, popup controls, and distribution package integrity.
+
+---
+
+## 📦 Packaged Distribution & Deployment
+
+To build or refresh the production zip archive for Chrome Web Store upload or offline distribution:
+```bash
+python 07-browser-extension/package_extension.py
+```
+- **Packaged Zip Archive:** `07-browser-extension/dist/aegistrace-extension-v1.0.0.zip`
+- **GitHub Source Link:** [GitHub Aegstrace-ai Extension](https://github.com/fredolin0109-hub/Aegstrace-ai/tree/main/07-browser-extension)
+- **Chrome Web Store Developer Console:** [Upload Dashboard](https://chrome.google.com/webstore/devconsole)
+

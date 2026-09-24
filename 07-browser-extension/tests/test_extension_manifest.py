@@ -119,3 +119,41 @@ def test_api_service_fallback_heuristics():
     api_content = api_file.read_text(encoding="utf-8")
     assert "localHeuristicFallback" in api_content
     assert "http://127.0.0.1:8000" in api_content
+
+
+def test_packaged_distribution_zip():
+    """Verify production zip bundle is valid and contains all necessary files for deployment."""
+    import zipfile
+    import sys
+    if str(EXT_DIR) not in sys.path:
+        sys.path.insert(0, str(EXT_DIR))
+    
+    zip_path = EXT_DIR / "dist" / "aegistrace-extension-v1.0.0.zip"
+    if not zip_path.exists():
+        from package_extension import package_extension
+        package_extension()
+
+    assert zip_path.exists(), f"Distribution zip not found at {zip_path}"
+    
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        namelist = zf.namelist()
+        # Verify core Manifest V3 files are packaged
+        assert "manifest.json" in namelist
+        assert "README.md" in namelist
+        assert "icons/icon-16.png" in namelist
+        assert "icons/icon-32.png" in namelist
+        assert "icons/icon-48.png" in namelist
+        assert "icons/icon-128.png" in namelist
+        assert "src/background/service-worker.js" in namelist
+        assert "src/content/content.js" in namelist
+        assert "src/content/banner.css" in namelist
+        assert "src/popup/popup.html" in namelist
+        assert "src/popup/popup.js" in namelist
+        assert "src/popup/popup.css" in namelist
+        assert "src/services/api.js" in namelist
+        
+        # Verify no test artifacts or python caches are accidentally bundled
+        assert not any("tests/" in name for name in namelist)
+        assert not any("__pycache__" in name for name in namelist)
+        assert not any(name.endswith(".pyc") for name in namelist)
+
