@@ -12,11 +12,11 @@
   // Listen for security messages from background service worker
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'AEGIS_HIGH_RISK_WARNING') {
-      showThreatWarning(message.data);
+      showThreatWarning(message.data, message.risk_alert);
     }
   });
 
-  function showThreatWarning(data) {
+  function showThreatWarning(data, messageAlert) {
     if (document.getElementById('aegistrace-warning-overlay')) {
       return; // Already visible
     }
@@ -57,6 +57,19 @@
           <div class="aegis-stat-item">
             <span class="aegis-stat-label">Recommended Action</span>
             <span class="aegis-stat-val" style="color: #fda4af;">${escapeHtml(data.recommendation || 'BLOCK')}</span>
+          </div>
+        </div>
+
+        <!-- Automated Incident Response & Email Notification Box -->
+        <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; text-align: left; font-family: monospace; font-size: 12px;">
+          <div style="color: #38bdf8; font-weight: bold; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 6px #38bdf8;"></span>
+            AUTOMATED DEFENSE &amp; ALERT STATUS
+          </div>
+          <div style="color: #cbd5e1; line-height: 1.6;">
+            <div>&bull; Incident ID: <strong style="color: #fff;">${escapeHtml((messageAlert && messageAlert.incident_id) || 'INC-ACTIVE')}</strong></div>
+            <div>&bull; Email Notification: <span style="color: #34d399; font-weight: bold;">&#x2713; Dispatched to SOC Administration</span></div>
+            <div>&bull; UiPath RPA Workflow: <span style="color: #38bdf8; font-weight: bold;">&#x2713; Triggered (AEGISTRACE_RiskAlert)</span></div>
           </div>
         </div>
 

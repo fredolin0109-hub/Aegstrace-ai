@@ -116,15 +116,14 @@ def analyze_url(
             if risk_pct > 45:
                 def trigger_uipath_worker():
                     try:
-                        uip_cli = r"C:\Program Files\UiPathPlatform\Studio\26.0.202-cloud.25004\cli\uip.cmd"
-                        proj_dir = r"C:\Users\htmlv\OneDrive\Documents\UiPath\aegistraceai"
+                        uip_cli = "C:/Program Files/UiPathPlatform/Studio/26.0.202-cloud.25004/cli/uip.cmd"
+                        proj_dir = "C:/Users/htmlv/OneDrive/Documents/UiPath/aegistraceai"
+                        cmd = f'"{uip_cli}" rpa run --project-dir "{proj_dir}" --file-path AegisTrace_LiveSync.xaml'
                         print(f"[UiPath Auto-Launch] Triggering UiPath Studio for high threat {risk_pct}% on {scan.url}...")
-                        proc = subprocess.Popen(
-                            [uip_cli, "rpa", "run", "--project-dir", proj_dir, "--file-path", "AegisTrace_LiveSync.xaml"],
-                            shell=True,
-                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
-                        )
-                        print(f"[UiPath Auto-Launch] Dispatched process PID: {proc.pid}")
+                        res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                        print(f"[UiPath Auto-Launch] Completed with code {res.returncode}. Output:\n{res.stdout}")
+                        if res.stderr:
+                            print(f"[UiPath Auto-Launch] Stderr:\n{res.stderr}")
                     except Exception as launch_err:
                         print(f"[UiPath Auto-Launch Failed]: {launch_err}")
 

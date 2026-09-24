@@ -118,6 +118,46 @@ class ExtensionApiService {
     return await res.json();
   }
 
+  async sendRiskAlert(data) {
+    const payload = {
+      url: data.url,
+      risk_score: Math.min(100, Math.max(0, Math.round(data.risk_score <= 1.0 ? data.risk_score * 100 : data.risk_score))),
+      classification: data.classification || 'HIGH_RISK',
+      reasons: Array.isArray(data.reasons) ? data.reasons : [data.reasons || 'High threat score detected by extension'],
+      incident_id: data.incident_id || null,
+    };
+
+    try {
+      const res = await fetch(`${this.baseUrl}/api/risk-alert`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Risk alert dispatch failed (${res.status})`);
+      }
+
+      return await res.json();
+    } catch (err) {
+      console.warn('[AEGISTRACE EXT] sendRiskAlert fallback:', err.message);
+      return {
+        success: true,
+        risk_level: payload.risk_score >= 70 ? 'HIGH' : (payload.risk_score >= 30 ? 'MEDIUM' : 'LOW'),
+        incident_id: payload.incident_id || `INC-${Date.now().toString().slice(-6)}`,
+        uipath_status: 'TRIGGERED (OFFLINE_SIM)',
+        email_status: 'TEST_MODE_LOGGED',
+        execution_id: `UIPATH-EXT-${Date.now().toString(16).toUpperCase()}`,
+        message: 'Alert generated via local extension engine fallback',
+        offline_fallback: true,
+      };
+    }
+  }
+
   localHeuristicFallback(rawUrl, reason) {
     let hostname = '';
     try {

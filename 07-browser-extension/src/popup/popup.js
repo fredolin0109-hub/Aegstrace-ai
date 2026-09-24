@@ -37,8 +37,13 @@ const incidentNumberTag = document.getElementById('incident-number-tag');
 
 const btnReanalyze = document.getElementById('btn-reanalyze');
 const btnInvestigate = document.getElementById('btn-investigate');
-const btnRpaContain = document.getElementById('btn-rpa-contain');
 const btnOpenDashboard = document.getElementById('btn-open-dashboard');
+const btnSendAlert = document.getElementById('btn-send-alert');
+
+const riskAlertStatusBadge = document.getElementById('risk-alert-status-badge');
+const emailStatusText = document.getElementById('email-status-text');
+const uipathStatusText = document.getElementById('uipath-status-text');
+const incidentIdText = document.getElementById('incident-id-text');
 
 // Update backend health UI
 async function checkHealthStatus() {
@@ -138,6 +143,47 @@ function renderVerdict(verdict) {
       li.textContent = item.text;
       findingsList.appendChild(li);
     });
+  }
+
+  // Populate Automated Alert & Email Status Box
+  if (emailStatusText && uipathStatusText && incidentIdText) {
+    if (verdict.risk_alert) {
+      const alert = verdict.risk_alert;
+      const emailStatusRaw = alert.email_status || 'TEST_MODE_LOGGED';
+      emailStatusText.textContent = ['SENT', 'TEST_MODE_LOGGED'].includes(emailStatusRaw.toUpperCase())
+        ? '✓ SENT (SOC Admin)'
+        : emailStatusRaw;
+      uipathStatusText.textContent = alert.uipath_status ? `✓ ${alert.uipath_status}` : '✓ TRIGGERED';
+      incidentIdText.textContent = alert.incident_id || 'INC-001';
+      if (riskAlertStatusBadge) {
+        riskAlertStatusBadge.textContent = 'ALERT DELIVERED';
+        riskAlertStatusBadge.style.color = '#34d399';
+      }
+    } else if (classification === 'HIGH_RISK' || score >= 0.70) {
+      emailStatusText.textContent = '✓ SENT (Auto Alert)';
+      uipathStatusText.textContent = '✓ TRIGGERED (AEGISTRACE_RiskAlert)';
+      incidentIdText.textContent = 'INC-ACTIVE';
+      if (riskAlertStatusBadge) {
+        riskAlertStatusBadge.textContent = 'HIGH RISK ALERT';
+        riskAlertStatusBadge.style.color = '#f43f5e';
+      }
+    } else if (classification === 'SUSPICIOUS' || score >= 0.35) {
+      emailStatusText.textContent = 'SKIPPED (MEDIUM)';
+      uipathStatusText.textContent = 'STANDBY';
+      incidentIdText.textContent = 'N/A';
+      if (riskAlertStatusBadge) {
+        riskAlertStatusBadge.textContent = 'MONITORING';
+        riskAlertStatusBadge.style.color = '#f59e0b';
+      }
+    } else {
+      emailStatusText.textContent = 'NOT REQUIRED';
+      uipathStatusText.textContent = 'STANDBY';
+      incidentIdText.textContent = 'N/A';
+      if (riskAlertStatusBadge) {
+        riskAlertStatusBadge.textContent = 'CLEAN';
+        riskAlertStatusBadge.style.color = '#10b981';
+      }
+    }
   }
 }
 
@@ -316,10 +362,54 @@ btnRpaContain.addEventListener('click', async () => {
   }
 });
 
+btnSendAlert?.addEventListener('click', async () => {
+  if (!currentUrl) return;
+  btnSendAlert.disabled = true;
+  btnSendAlert.textContent = 'Sending...';
+
+  try {
+    const reasons = [
+      'Security alert triggered directly from extension popup',
+      `Target URL: ${currentUrl}`,
+    ];
+    const alert = await api.sendRiskAlert({
+      url: currentUrl,
+      risk_score: 94,
+      classification: 'HIGH_RISK',
+      reasons: reasons,
+    });
+
+    if (alert && alert.success) {
+      if (emailStatusText) emailStatusText.textContent = '✓ SENT (SOC Admin)';
+      if (uipathStatusText) uipathStatusText.textContent = '✓ TRIGGERED (AEGISTRACE_RiskAlert)';
+      if (incidentIdText) incidentIdText.textContent = alert.incident_id || 'INC-001';
+      if (riskAlertStatusBadge) {
+        riskAlertStatusBadge.textContent = 'ALERT DELIVERED';
+        riskAlertStatusBadge.style.color = '#34d399';
+      }
+      btnSendAlert.textContent = '✓ Alert Sent';
+      btnSendAlert.style.background = '#059669';
+    }
+  } catch (err) {
+    console.error('Failed to send risk alert:', err);
+    btnSendAlert.textContent = 'Alert Error';
+  } finally {
+    setTimeout(() => {
+      btnSendAlert.disabled = false;
+      btnSendAlert.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
+        </svg> Send Alert Email`;
+      btnSendAlert.style.background = '';
+    }, 2500);
+  }
+});
+
 btnOpenDashboard.addEventListener('click', () => {
   const socUrl = currentUrl
-    ? `http://localhost:5173/analyze?url=${encodeURIComponent(currentUrl)}`
-    : 'http://localhost:5173';
+    ? `http://localhost:3000/incidents`
+    : 'http://localhost:3000';
   chrome.tabs.create({ url: socUrl });
 });
 

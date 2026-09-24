@@ -56,6 +56,70 @@ async function inspectTab(tabId, url) {
   // Run analysis via API service
   const result = await api.analyzeUrl(url);
 
+  // Automated Risk Alert & Email Dispatch for High Risk / Suspicious URLs
+  let alertResult = null;
+  const isHighRisk = result.classification === 'HIGH_RISK' || result.risk_score >= 0.70;
+  const isSuspicious = result.classification === 'SUSPICIOUS' || (result.risk_score >= 0.35 && result.risk_score < 0.70);
+
+  if (isHighRisk || isSuspicious) {
+    const alertKey = `alert_sent_${url}`;
+    const alreadyAlerted = await chrome.storage.local.get(alertKey);
+    if (!alreadyAlerted[alertKey]) {
+      try {
+        const reasons = [];
+        if (result.indicators && Array.isArray(result.indicators)) {
+          result.indicators.forEach(i => {
+            if (i.value) reasons.push(i.value);
+            else if (i.details?.note) reasons.push(i.details.note);
+          });
+        }
+        if (result.ml_explanations && Array.isArray(result.ml_explanations)) {
+          reasons.push(...result.ml_explanations);
+        }
+        if (reasons.length === 0) {
+          reasons.push('Elevated threat indicators identified by real-time extension shield');
+        }
+
+        alertResult = await api.sendRiskAlert({
+          url: url,
+          risk_score: Math.round(result.risk_score * 100),
+          classification: result.classification || (isHighRisk ? 'HIGH_RISK' : 'SUSPICIOUS'),
+          reasons: reasons.slice(0, 5),
+        });
+
+        result.risk_alert = alertResult;
+
+        await chrome.storage.local.set({
+          [alertKey]: { timestamp: now, alert: alertResult },
+          last_risk_alert: {
+            url,
+            alert: alertResult,
+            timestamp: now,
+          }
+        });
+
+        // Trigger native notification popup
+        if (isHighRisk && chrome.notifications) {
+          try {
+            chrome.notifications.create(`aegis_alert_${Date.now()}`, {
+              type: 'basic',
+              iconUrl: 'icons/icon-128.png',
+              title: '⚠️ AEGISTRACE: Threat Detected!',
+              message: `High-risk URL intercepted (${Math.round(result.risk_score * 100)}%). Alert email dispatched to SOC admin.`,
+              priority: 2,
+            }, () => {});
+          } catch (notifErr) {
+            console.debug('Notification creation notice:', notifErr);
+          }
+        }
+      } catch (alertErr) {
+        console.error('Failed to trigger automatic risk alert:', alertErr);
+      }
+    } else {
+      result.risk_alert = alreadyAlerted[alertKey].alert;
+    }
+  }
+
   // Store in cache
   await chrome.storage.local.set({
     [cacheKey]: {
@@ -74,11 +138,12 @@ async function inspectTab(tabId, url) {
   await updateTabBadge(tabId, result.classification, result.risk_score);
 
   // If High Risk, notify content script to render intercepted warning banner
-  if (result.classification === 'HIGH_RISK') {
+  if (isHighRisk) {
     try {
       await chrome.tabs.sendMessage(tabId, {
         type: 'AEGIS_HIGH_RISK_WARNING',
         data: result,
+        risk_alert: alertResult || result.risk_alert,
       });
     } catch (err) {
       console.debug('Content script not yet ready on tab:', tabId);
@@ -161,6 +226,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const { execution_id } = message;
           const status = await api.getUiPathStatus(execution_id);
           sendResponse({ success: true, status });
+          break;
+        }
+
+        case 'SEND_RISK_ALERT': {
+          const alert = await api.sendRiskAlert(message.data || {});
+          sendResponse({ success: true, alert });
           break;
         }
 
