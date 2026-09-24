@@ -13,11 +13,24 @@ class ExtensionApiService {
 
   async checkHealth() {
     try {
-      const res = await fetch(`${this.baseUrl}/api/health`, {
+      let res = await fetch(`${this.baseUrl}/api/health`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
-      });
-      if (!res.ok) throw new Error(`Status ${res.status}`);
+      }).catch(() => null);
+
+      if (!res || !res.ok) {
+        const alt = this.baseUrl.includes('127.0.0.1') ? 'http://localhost:8000' : 'http://127.0.0.1:8000';
+        const altRes = await fetch(`${alt}/api/health`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+        }).catch(() => null);
+        if (altRes && altRes.ok) {
+          this.baseUrl = alt;
+          res = altRes;
+        }
+      }
+
+      if (!res || !res.ok) throw new Error(res ? `Status ${res.status}` : 'Connection failed');
       return await res.json();
     } catch (err) {
       return { status: 'offline', error: err.message };
@@ -33,18 +46,34 @@ class ExtensionApiService {
     };
 
     try {
-      const res = await fetch(`${this.baseUrl}/api/analyze`, {
+      let res = await fetch(`${this.baseUrl}/api/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
         body: JSON.stringify(payload),
-      });
+      }).catch(() => null);
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Analysis failed (${res.status})`);
+      if (!res || !res.ok) {
+        const alt = this.baseUrl.includes('127.0.0.1') ? 'http://localhost:8000' : 'http://127.0.0.1:8000';
+        const altRes = await fetch(`${alt}/api/analyze`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        }).catch(() => null);
+        if (altRes && altRes.ok) {
+          this.baseUrl = alt;
+          res = altRes;
+        }
+      }
+
+      if (!res || !res.ok) {
+        const errorData = res ? await res.json().catch(() => ({})) : {};
+        throw new Error(errorData.detail || (res ? `Analysis failed (${res.status})` : 'Connection failed'));
       }
 
       return await res.json();

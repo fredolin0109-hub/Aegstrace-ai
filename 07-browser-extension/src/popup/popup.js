@@ -37,6 +37,7 @@ const incidentNumberTag = document.getElementById('incident-number-tag');
 
 const btnReanalyze = document.getElementById('btn-reanalyze');
 const btnInvestigate = document.getElementById('btn-investigate');
+const btnRpaContain = document.getElementById('btn-rpa-contain');
 const btnOpenDashboard = document.getElementById('btn-open-dashboard');
 const btnSendAlert = document.getElementById('btn-send-alert');
 
@@ -191,9 +192,11 @@ function renderVerdict(verdict) {
 async function initActiveTab() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.url) {
-      targetDomainEl.textContent = 'No active webpage';
-      targetUrlEl.textContent = 'Open an HTTP/HTTPS webpage to inspect';
+    if (!tab || !tab.url || (!tab.url.startsWith('http://') && !tab.url.startsWith('https://'))) {
+      if (targetDomainEl) targetDomainEl.textContent = tab?.url?.startsWith('chrome://') ? 'Browser System Tab' : 'No active webpage';
+      if (targetUrlEl) targetUrlEl.textContent = tab?.url || 'Open an HTTP/HTTPS webpage to inspect';
+      if (recommendationText) recommendationText.textContent = 'Active tab is a browser system page. Open any website to inspect.';
+      updateScoreGauge(0, 'SAFE');
       return;
     }
 
@@ -209,13 +212,18 @@ async function initActiveTab() {
       targetUrlEl.textContent = tab.url;
     }
 
+    // Set initial loading indicator
+    if (recommendationText) recommendationText.textContent = 'Analyzing active tab threat indicators...';
+
     // Request verdict from background service worker
     chrome.runtime.sendMessage({ action: 'GET_ACTIVE_VERDICT' }, (res) => {
-      if (res && res.success && res.verdict) {
-        renderVerdict(res.verdict);
+      if (chrome.runtime.lastError || !res || !res.success || !res.verdict) {
+        // Fallback direct scan via API service
+        api.analyzeUrl(currentUrl).then(renderVerdict).catch(err => {
+          console.warn('[AEGIS POPUP] Direct analysis fallback notice:', err);
+        });
       } else {
-        // Fallback direct scan
-        api.analyzeUrl(currentUrl).then(renderVerdict);
+        renderVerdict(res.verdict);
       }
     });
   } catch (err) {
@@ -316,12 +324,11 @@ btnInvestigate.addEventListener('click', async () => {
   }
 });
 
-btnRpaContain.addEventListener('click', async () => {
+btnRpaContain?.addEventListener('click', async () => {
   btnRpaContain.disabled = true;
   btnRpaContain.textContent = 'Dispatching RPA...';
 
   try {
-    // If no incident created yet, create one on the fly or use incident 1
     const incidentId = currentIncidentId || 1;
     const res = await new Promise((resolve) => {
       chrome.runtime.sendMessage({
@@ -329,7 +336,13 @@ btnRpaContain.addEventListener('click', async () => {
         incident_id: incidentId,
         action_type: 'CONTAIN_HOST',
         parameters: { target_url: currentUrl, client: 'CHROME_EXTENSION' }
-      }, resolve);
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          resolve({ success: false, error: chrome.runtime.lastError.message });
+        } else {
+          resolve(response);
+        }
+      });
     });
 
     if (res && res.success && res.action) {
@@ -406,7 +419,7 @@ btnSendAlert?.addEventListener('click', async () => {
   }
 });
 
-btnOpenDashboard.addEventListener('click', () => {
+btnOpenDashboard?.addEventListener('click', () => {
   const socUrl = currentUrl
     ? `http://localhost:3000/incidents`
     : 'http://localhost:3000';
@@ -414,5 +427,13 @@ btnOpenDashboard.addEventListener('click', () => {
 });
 
 // Startup sequence
-checkHealthStatus();
-initActiveTab();
+function bootstrap() {
+  checkHealthStatus();
+  initActiveTab();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootstrap);
+} else {
+  bootstrap();
+}
