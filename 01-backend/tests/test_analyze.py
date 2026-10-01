@@ -43,3 +43,48 @@ def test_analyze_missing_or_invalid_url(client):
     # Missing url key
     response = client.post("/api/analyze", json={})
     assert response.status_code == 422
+
+
+def test_url_feature_extraction_caching():
+    from app.services.cache_service import clear_scan_caches, url_features_cache
+    from app.services.scan_service import extract_url_features
+
+    clear_scan_caches()
+    url = "https://example.com/test-page"
+    domain = "example.com"
+    is_ip = False
+
+    # First call: cache miss, calculates features
+    feat1 = extract_url_features(url, domain, is_ip)
+    stats1 = url_features_cache.stats()
+    assert stats1["hits"] == 0
+    assert stats1["misses"] == 1
+
+    # Second call: cache hit, returns cached result
+    feat2 = extract_url_features(url, domain, is_ip)
+    stats2 = url_features_cache.stats()
+    assert stats2["hits"] == 1
+    assert feat1 == feat2
+
+
+def test_dsa_analysis_caching(db_session):
+    from unittest.mock import patch
+    from app.services.cache_service import clear_scan_caches, dsa_analysis_cache
+    from app.services.scan_service import perform_scan, global_dsa_engine
+
+    clear_scan_caches()
+    raw_url = "https://cache-test-domain.com/login"
+
+    with patch.object(global_dsa_engine, "analyze_url_dsa", wraps=global_dsa_engine.analyze_url_dsa) as mock_dsa:
+        # First scan: DSA engine executes
+        scan1 = perform_scan(db=db_session, raw_url=raw_url)
+        assert mock_dsa.call_count == 1
+
+        # Second scan: DSA engine is NOT executed again (cache hit)
+        scan2 = perform_scan(db=db_session, raw_url=raw_url)
+        assert mock_dsa.call_count == 1
+        assert dsa_analysis_cache.stats()["hits"] == 1
+
+        assert scan1.risk_score == scan2.risk_score
+        assert scan1.classification == scan2.classification
+

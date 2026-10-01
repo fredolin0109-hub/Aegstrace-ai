@@ -42,6 +42,12 @@ except ImportError:
 from app.models.url_scan import URLScan
 from app.models.threat_indicator import ThreatIndicator
 from app.services.audit_service import record_audit
+from app.services.cache_service import (
+    url_features_cache,
+    dsa_analysis_cache,
+    clear_scan_caches,
+)
+
 
 
 SUSPICIOUS_TLDS = {
@@ -82,6 +88,11 @@ def normalize_url(url: str) -> Tuple[str, str, Optional[str]]:
 
 def extract_url_features(url: str, domain: str, is_ip: bool) -> Dict[str, Any]:
     """Extract structural and semantic heuristic features from URL."""
+    cache_key = (url, domain, is_ip)
+    cached_features = url_features_cache.get(cache_key)
+    if cached_features is not None:
+        return cached_features
+
     parsed = urlparse(url)
     path = parsed.path or ""
     query = parsed.query or ""
@@ -107,7 +118,7 @@ def extract_url_features(url: str, domain: str, is_ip: bool) -> Dict[str, Any]:
     # Keyword search
     detected_keywords = [kw for kw in SUSPICIOUS_KEYWORDS if kw in full_str]
 
-    return {
+    features = {
         "url_length": len(url),
         "domain_length": len(domain),
         "is_ip_address": is_ip,
@@ -122,6 +133,9 @@ def extract_url_features(url: str, domain: str, is_ip: bool) -> Dict[str, Any]:
         "detected_keywords": detected_keywords,
         "path_depth": len([seg for seg in path.split("/") if seg]),
     }
+    url_features_cache.set(cache_key, features)
+    return features
+
 
 
 def evaluate_heuristics(
@@ -337,6 +351,32 @@ def evaluate_heuristics(
     return final_score, classification, confidence, recommendation, indicators
 
 
+def analyze_url_dsa_cached(
+    raw_url: str,
+    domain: str,
+    ip_address: Optional[str] = None,
+    redirect_chain: Optional[List[str]] = None,
+) -> DSAScanResult:
+    """
+    Cached wrapper around global_dsa_engine.analyze_url_dsa using TTL/LRU cache.
+    Key includes raw_url, domain, effective ip_address, and redirect_chain tuple.
+    """
+    redirect_tuple = tuple(redirect_chain) if redirect_chain else ()
+    cache_key = (raw_url, domain, ip_address, redirect_tuple)
+    cached_result = dsa_analysis_cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
+    dsa_result = global_dsa_engine.analyze_url_dsa(
+        raw_url=raw_url,
+        domain=domain,
+        ip_address=ip_address,
+        redirect_chain=redirect_chain,
+    )
+    dsa_analysis_cache.set(cache_key, dsa_result)
+    return dsa_result
+
+
 def perform_scan(
     db: Session,
     raw_url: str,
@@ -349,12 +389,13 @@ def perform_scan(
     features = extract_url_features(normalized_url, domain, is_ip=bool(ip_addr))
 
     # Execute DSA Engine Pipeline (HashMap, Trie, ThreatGraph)
-    dsa_result: DSAScanResult = global_dsa_engine.analyze_url_dsa(
+    dsa_result: DSAScanResult = analyze_url_dsa_cached(
         raw_url=normalized_url,
         domain=domain,
         ip_address=ip_addr or client_ip,
         redirect_chain=redirect_chain,
     )
+
 
     # Execute AIML Engine Pipeline (Feature Extraction + Random Forest Classifier)
     try:
